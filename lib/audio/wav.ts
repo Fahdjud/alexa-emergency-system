@@ -7,7 +7,10 @@
  */
 
 /** Samples are floats in [-1, 1]; values outside are clipped. */
-export function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {
+export function encodeWav(
+  samples: Float32Array,
+  sampleRate: number
+): ArrayBuffer {
   const bytesPerSample = 2
   const dataSize = samples.length * bytesPerSample
   const buffer = new ArrayBuffer(44 + dataSize)
@@ -29,11 +32,16 @@ export function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffe
 
   samples.forEach((sample, index) => {
     const clipped = Math.max(-1, Math.min(1, sample))
-    view.setInt16(44 + index * bytesPerSample, clipped < 0 ? clipped * 0x8000 : clipped * 0x7fff, true)
+    view.setInt16(
+      44 + index * bytesPerSample,
+      clipped < 0 ? clipped * 0x8000 : clipped * 0x7fff,
+      true
+    )
   })
   return buffer
 }
 
 function writeText(view: DataView, offset: number, text: string): void {
-  for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i))
+  for (let i = 0; i < text.length; i++)
+    view.setUint8(offset + i, text.charCodeAt(i))
 }

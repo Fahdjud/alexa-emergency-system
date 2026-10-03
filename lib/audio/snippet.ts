@@ -13,7 +13,7 @@ export class SnippetCollector {
 
   constructor(
     before: Float32Array,
-    private readonly samplesAfter: number,
+    private readonly samplesAfter: number
   ) {
     this.parts = [before]
   }
@@ -38,7 +38,9 @@ export class SnippetCollector {
 }
 
 export function concatSamples(parts: Float32Array[]): Float32Array {
-  const result = new Float32Array(parts.reduce((total, part) => total + part.length, 0))
+  const result = new Float32Array(
+    parts.reduce((total, part) => total + part.length, 0)
+  )
   let offset = 0
   for (const part of parts) {
     result.set(part, offset)

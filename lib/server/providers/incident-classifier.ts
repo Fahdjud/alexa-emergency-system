@@ -34,7 +34,10 @@ export function getIncidentClassifier(): IncidentClassifier {
       try {
         return await primary.classify(input)
       } catch (error) {
-        console.error("Language model classification failed; using rules instead.", error)
+        console.error(
+          "Language model classification failed; using rules instead.",
+          error
+        )
         return rulesClassifier.classify(input)
       }
     },

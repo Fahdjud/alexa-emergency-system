@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest"
 import { isIncident, severityFor, verifiedQuote } from "./ai-check"
 import type { Classification } from "./schemas"
 
-const classification = (incidentType: Classification["incidentType"], confidence: number): Classification => ({
+const classification = (
+  incidentType: Classification["incidentType"],
+  confidence: number
+): Classification => ({
   incidentType,
   confidence,
   severity: null,
@@ -22,12 +25,16 @@ describe("isIncident", () => {
 
 describe("verifiedQuote", () => {
   it("keeps exact quotes, ignoring case and punctuation", () => {
-    expect(verifiedQuote("I can't breathe", "Oh no, I CAN'T breathe!")).toBe("I can't breathe")
+    expect(verifiedQuote("I can't breathe", "Oh no, I CAN'T breathe!")).toBe(
+      "I can't breathe"
+    )
     expect(verifiedQuote("الحقوني", "يا ناس الحقوني")).toBe("الحقوني")
   })
 
   it("drops paraphrased or empty quotes", () => {
-    expect(verifiedQuote("I am unable to breathe", "I can't breathe")).toBeNull()
+    expect(
+      verifiedQuote("I am unable to breathe", "I can't breathe")
+    ).toBeNull()
     expect(verifiedQuote("", "help")).toBeNull()
     expect(verifiedQuote(null, "help")).toBeNull()
   })

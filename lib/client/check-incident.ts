@@ -8,7 +8,10 @@
  * person anyway: a failed check never blocks a safety question.
  */
 import { encodeWav } from "@/lib/audio/wav"
-import { AiCheckResponseSchema, type AiCheckResponse } from "@/lib/safety/schemas"
+import {
+  AiCheckResponseSchema,
+  type AiCheckResponse,
+} from "@/lib/safety/schemas"
 import type { Language, TriggerMatch } from "@/lib/safety/types"
 
 /** Upload, transcription and classification together; beyond this we stop waiting and ask. */
@@ -22,9 +25,19 @@ type Input = {
   deviceToken: string
 }
 
-export async function checkIncident({ samples, sampleRate, trigger, language, deviceToken }: Input): Promise<AiCheckResponse | null> {
+export async function checkIncident({
+  samples,
+  sampleRate,
+  trigger,
+  language,
+  deviceToken,
+}: Input): Promise<AiCheckResponse | null> {
   const form = new FormData()
-  form.append("audio", new Blob([encodeWav(samples, sampleRate)], { type: "audio/wav" }), "snippet.wav")
+  form.append(
+    "audio",
+    new Blob([encodeWav(samples, sampleRate)], { type: "audio/wav" }),
+    "snippet.wav"
+  )
   form.append("trigger", JSON.stringify(trigger))
   form.append("language", language)
 

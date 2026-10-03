@@ -12,7 +12,8 @@ import type { Language } from "@/lib/safety/types"
 
 import type { SpeechToText } from "./speech-to-text"
 
-const GROQ_TRANSCRIPTION_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+const GROQ_TRANSCRIPTION_URL =
+  "https://api.groq.com/openai/v1/audio/transcriptions"
 const MODEL = "whisper-large-v3-turbo"
 const TIMEOUT_MS = 10_000
 
@@ -32,7 +33,10 @@ export function createGroqSpeechToText(): SpeechToText {
         body: form,
         signal: AbortSignal.timeout(TIMEOUT_MS),
       })
-      if (!response.ok) throw new Error(`Groq transcription failed with status ${response.status}`)
+      if (!response.ok)
+        throw new Error(
+          `Groq transcription failed with status ${response.status}`
+        )
 
       const body = (await response.json()) as { text?: unknown }
       return typeof body.text === "string" ? body.text.trim() : ""

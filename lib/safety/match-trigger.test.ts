@@ -2,11 +2,21 @@
 import { describe, expect, it } from "vitest"
 
 import { INCIDENTS } from "./incidents"
-import { addSoundFrame, matchPhrase, matchSound, needsAiCheck, pickMostSevere, soundHistoryMs } from "./match-trigger"
+import {
+  addSoundFrame,
+  matchPhrase,
+  matchSound,
+  needsAiCheck,
+  pickMostSevere,
+  soundHistoryMs,
+} from "./match-trigger"
 import { normalizeText } from "./normalize-text"
 import type { SoundFrame } from "./types"
 
-const frame = (timeMs: number, scores: Record<string, number>): SoundFrame => ({ timeMs, scores })
+const frame = (timeMs: number, scores: Record<string, number>): SoundFrame => ({
+  timeMs,
+  scores,
+})
 
 describe("incident config", () => {
   it("has unique ids", () => {
@@ -16,8 +26,12 @@ describe("incident config", () => {
 
   it("gives every incident a trigger and a question in both languages", () => {
     for (const incident of INCIDENTS) {
-      const phraseCount = incident.triggerPhrases.en.length + incident.triggerPhrases.ar.length
-      expect(incident.triggerSounds.length + phraseCount, incident.id).toBeGreaterThan(0)
+      const phraseCount =
+        incident.triggerPhrases.en.length + incident.triggerPhrases.ar.length
+      expect(
+        incident.triggerSounds.length + phraseCount,
+        incident.id
+      ).toBeGreaterThan(0)
       expect(incident.confirmationQuestion.en).toMatch(/are you okay\?$/i)
       expect(incident.confirmationQuestion.ar).toContain("هل أنت بخير؟")
     }
@@ -25,7 +39,10 @@ describe("incident config", () => {
 
   it("has no phrase that normalises to nothing", () => {
     for (const incident of INCIDENTS) {
-      for (const phrase of [...incident.triggerPhrases.en, ...incident.triggerPhrases.ar]) {
+      for (const phrase of [
+        ...incident.triggerPhrases.en,
+        ...incident.triggerPhrases.ar,
+      ]) {
         expect(normalizeText(phrase), `${incident.id}: ${phrase}`).not.toBe("")
       }
     }
@@ -49,15 +66,23 @@ describe("normalizeText", () => {
 
 describe("matchPhrase", () => {
   it("matches English phrases whatever the contraction", () => {
-    expect(matchPhrase("Help! I've fallen and I can't get up", "en").map((m) => m.incidentId)).toEqual(
-      expect.arrayContaining(["fall", "help_call"]),
-    )
-    expect(matchPhrase("I cannot breathe", "en")[0]).toMatchObject({ incidentId: "medical_distress" })
+    expect(
+      matchPhrase("Help! I've fallen and I can't get up", "en").map(
+        (m) => m.incidentId
+      )
+    ).toEqual(expect.arrayContaining(["fall", "help_call"]))
+    expect(matchPhrase("I cannot breathe", "en")[0]).toMatchObject({
+      incidentId: "medical_distress",
+    })
   })
 
   it("matches Arabic phrases with or without hamza and diacritics", () => {
-    expect(matchPhrase("ما اقدر اتنفس", "ar")[0]).toMatchObject({ incidentId: "medical_distress" })
-    expect(matchPhrase("الحقوني! طِحت", "ar").map((m) => m.incidentId)).toEqual(expect.arrayContaining(["fall", "help_call"]))
+    expect(matchPhrase("ما اقدر اتنفس", "ar")[0]).toMatchObject({
+      incidentId: "medical_distress",
+    })
+    expect(matchPhrase("الحقوني! طِحت", "ar").map((m) => m.incidentId)).toEqual(
+      expect.arrayContaining(["fall", "help_call"])
+    )
   })
 
   it("matches whole words only", () => {
@@ -66,7 +91,10 @@ describe("matchPhrase", () => {
   })
 
   it("quotes the longest matching phrase", () => {
-    expect(matchPhrase("please help me", "en")[0]).toMatchObject({ incidentId: "help_call", phrase: "help me" })
+    expect(matchPhrase("please help me", "en")[0]).toMatchObject({
+      incidentId: "help_call",
+      phrase: "help me",
+    })
   })
 
   it("only uses the phrases of the given language", () => {
@@ -76,8 +104,17 @@ describe("matchPhrase", () => {
 
 describe("matchSound", () => {
   it("triggers on a single frame above the threshold", () => {
-    const matches = matchSound([frame(0, { "Smoke detector, smoke alarm": 0.6 })])
-    expect(matches).toEqual([{ incidentId: "smoke_co_alarm", source: "sound", label: "Smoke detector, smoke alarm", score: 0.6 }])
+    const matches = matchSound([
+      frame(0, { "Smoke detector, smoke alarm": 0.6 }),
+    ])
+    expect(matches).toEqual([
+      {
+        incidentId: "smoke_co_alarm",
+        source: "sound",
+        label: "Smoke detector, smoke alarm",
+        score: 0.6,
+      },
+    ])
   })
 
   it("ignores scores below the threshold", () => {
@@ -86,12 +123,19 @@ describe("matchSound", () => {
 
   it("requires sustained sounds to last", () => {
     const screaming = (from: number, to: number) =>
-      Array.from({ length: to - from + 1 }, (_, i) => frame((from + i) * 1000, { Screaming: 0.8 }))
+      Array.from({ length: to - from + 1 }, (_, i) =>
+        frame((from + i) * 1000, { Screaming: 0.8 })
+      )
 
     expect(matchSound(screaming(0, 2))).toEqual([]) // only 2 s of history
-    expect(matchSound(screaming(0, 6))[0]).toMatchObject({ incidentId: "screaming_crying", label: "Screaming" })
+    expect(matchSound(screaming(0, 6))[0]).toMatchObject({
+      incidentId: "screaming_crying",
+      label: "Screaming",
+    })
 
-    const mostlyQuiet = [...screaming(0, 6)].map((f, i) => (i % 2 === 0 ? f : frame(f.timeMs, { Screaming: 0.1 })))
+    const mostlyQuiet = [...screaming(0, 6)].map((f, i) =>
+      i % 2 === 0 ? f : frame(f.timeMs, { Screaming: 0.1 })
+    )
     expect(matchSound(mostlyQuiet)).toEqual([])
   })
 })
@@ -118,7 +162,10 @@ describe("sound history", () => {
 
   it("drops frames older than the history window", () => {
     let frames: SoundFrame[] = []
-    for (let second = 0; second <= 20; second++) frames = addSoundFrame(frames, frame(second * 1000, {}), 5000)
-    expect(frames.map((f) => f.timeMs)).toEqual([15_000, 16_000, 17_000, 18_000, 19_000, 20_000])
+    for (let second = 0; second <= 20; second++)
+      frames = addSoundFrame(frames, frame(second * 1000, {}), 5000)
+    expect(frames.map((f) => f.timeMs)).toEqual([
+      15_000, 16_000, 17_000, 18_000, 19_000, 20_000,
+    ])
   })
 })

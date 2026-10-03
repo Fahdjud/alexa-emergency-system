@@ -31,7 +31,10 @@ export const REPLY_HINT: Record<Language, string> = {
 }
 
 /** What the device says after the answer. */
-export const OUTCOME_LINES: Record<"cancelled" | "escalated", Record<Language, string>> = {
+export const OUTCOME_LINES: Record<
+  "cancelled" | "escalated",
+  Record<Language, string>
+> = {
   cancelled: {
     en: "Okay, I'm glad you're fine. I'll keep listening.",
     ar: "حسنًا، الحمد لله أنك بخير. سأبقى أستمع.",
@@ -40,4 +43,16 @@ export const OUTCOME_LINES: Record<"cancelled" | "escalated", Record<Language, s
     en: `I'm alerting your contacts now. If you can, call ${EMERGENCY_NUMBERS.unified}.`,
     ar: `سأنبه جهات الاتصال الآن. إذا استطعت، اتصل على ${EMERGENCY_NUMBERS.unified}.`,
   },
+}
+
+/** Said while escalated, once the server reports how it is going. */
+export const SERVER_OUTCOME_LINES = {
+  acknowledged: (name: string): Record<Language, string> => ({
+    en: `${name} has seen the alert and is handling it.`,
+    ar: `${name} اطّلع على التنبيه ويتولى الأمر.`,
+  }),
+  unacknowledged: {
+    en: `I couldn't reach anyone. If you can, call ${EMERGENCY_NUMBERS.unified} now.`,
+    ar: `لم أتمكن من الوصول لأحد. إذا استطعت، اتصل على ${EMERGENCY_NUMBERS.unified} الآن.`,
+  } satisfies Record<Language, string>,
 }

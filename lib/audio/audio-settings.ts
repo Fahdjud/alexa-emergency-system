@@ -25,7 +25,8 @@ export const CLASSIFY_EVERY_MS = 1000
  * MediaPipe's WebAssembly runtime. The version must match @mediapipe/tasks-audio
  * in package.json; update both together.
  */
-export const MEDIAPIPE_WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.0.1/wasm"
+export const MEDIAPIPE_WASM_URL =
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.0.1/wasm"
 
 /** Google's hosted YAMNet model (float32, ~4 MB), downloaded once per page load. */
 export const YAMNET_MODEL_URL =

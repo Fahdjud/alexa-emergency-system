@@ -8,14 +8,26 @@ const result = (scores: Record<string, number>) => ({
     {
       headIndex: 0,
       headName: "scores",
-      categories: Object.entries(scores).map(([categoryName, score], index) => ({ categoryName, score, index, displayName: "" })),
+      categories: Object.entries(scores).map(
+        ([categoryName, score], index) => ({
+          categoryName,
+          score,
+          index,
+          displayName: "",
+        })
+      ),
     },
   ],
 })
 
 describe("highestScores", () => {
   it("keeps each label's highest score across windows", () => {
-    expect(highestScores([result({ Glass: 0.2, Speech: 0.9 }), result({ Glass: 0.7, Speech: 0.1 })])).toEqual({ Glass: 0.7, Speech: 0.9 })
+    expect(
+      highestScores([
+        result({ Glass: 0.2, Speech: 0.9 }),
+        result({ Glass: 0.7, Speech: 0.1 }),
+      ])
+    ).toEqual({ Glass: 0.7, Speech: 0.9 })
     expect(highestScores([])).toEqual({})
   })
 })

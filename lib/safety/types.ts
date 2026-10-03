@@ -51,8 +51,18 @@ export type SoundFrame = {
 }
 
 export type TriggerMatch =
-  | { incidentId: IncidentTypeId; source: "sound"; label: string; score: number }
-  | { incidentId: IncidentTypeId; source: "speech"; phrase: string; language: Language }
+  | {
+      incidentId: IncidentTypeId
+      source: "sound"
+      label: string
+      score: number
+    }
+  | {
+      incidentId: IncidentTypeId
+      source: "speech"
+      phrase: string
+      language: Language
+    }
 
 export type ReplyIntent = "fine" | "help" | "unclear"
 

@@ -23,7 +23,8 @@ const ENGLISH_CONTRACTIONS: [RegExp, string][] = [
 
 export function normalizeText(text: string): string {
   let result = text.toLowerCase().replace(/[‘’ʼ`]/g, "'")
-  for (const [pattern, replacement] of ENGLISH_CONTRACTIONS) result = result.replace(pattern, replacement)
+  for (const [pattern, replacement] of ENGLISH_CONTRACTIONS)
+    result = result.replace(pattern, replacement)
   return normalizeArabic(result)
     .replace(/[^\p{L}\p{N}\s]/gu, " ") // punctuation (incl. Arabic ، ؟) becomes a word break
     .replace(/\s+/g, " ")
@@ -40,7 +41,10 @@ function normalizeArabic(text: string): string {
 }
 
 /** True when every word of the phrase appears, in order and adjacent, in the text. Both must be normalised. */
-export function containsPhrase(normalizedText: string, normalizedPhrase: string): boolean {
+export function containsPhrase(
+  normalizedText: string,
+  normalizedPhrase: string
+): boolean {
   if (!normalizedPhrase) return false
   return ` ${normalizedText} `.includes(` ${normalizedPhrase} `)
 }

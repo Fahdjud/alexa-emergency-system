@@ -11,9 +11,16 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { AFTER_TRIGGER_SECONDS, BUFFER_SECONDS } from "@/lib/audio/audio-settings"
+import {
+  AFTER_TRIGGER_SECONDS,
+  BUFFER_SECONDS,
+} from "@/lib/audio/audio-settings"
 import { loudness } from "@/lib/audio/level"
-import { describeMicrophoneError, startMicrophone, type MicrophoneSession } from "@/lib/audio/microphone"
+import {
+  describeMicrophoneError,
+  startMicrophone,
+  type MicrophoneSession,
+} from "@/lib/audio/microphone"
 import { RingBuffer } from "@/lib/audio/ring-buffer"
 import { SnippetCollector } from "@/lib/audio/snippet"
 
@@ -49,7 +56,8 @@ export function useAudioCapture() {
       const session = await startMicrophone((chunk) => {
         bufferRef.current?.push(chunk)
         setLevel(loudness(chunk))
-        for (const listener of listenersRef.current) listener(chunk, session.sampleRate)
+        for (const listener of listenersRef.current)
+          listener(chunk, session.sampleRate)
       })
       sessionRef.current = session
       bufferRef.current = new RingBuffer(session.sampleRate * BUFFER_SECONDS)
@@ -74,7 +82,9 @@ export function useAudioCapture() {
   const recentAudio = useCallback((): AudioClip | null => {
     const session = sessionRef.current
     const buffer = bufferRef.current
-    return session && buffer ? { samples: buffer.snapshot(), sampleRate: session.sampleRate } : null
+    return session && buffer
+      ? { samples: buffer.snapshot(), sampleRate: session.sampleRate }
+      : null
   }, [])
 
   /** The buffered audio plus the next AFTER_TRIGGER_SECONDS. Resolves to null if capture stops first. */
@@ -84,22 +94,38 @@ export function useAudioCapture() {
       if (!before) return Promise.resolve(null)
 
       return new Promise((resolve) => {
-        const collector = new SnippetCollector(before.samples, before.sampleRate * afterSeconds)
+        const collector = new SnippetCollector(
+          before.samples,
+          before.sampleRate * afterSeconds
+        )
         const finish = (clip: AudioClip | null) => {
           clearInterval(stopWatch)
           unsubscribe()
           resolve(clip)
         }
         const unsubscribe = onChunk((chunk) => {
-          if (collector.add(chunk)) finish({ samples: collector.result(), sampleRate: before.sampleRate })
+          if (collector.add(chunk))
+            finish({
+              samples: collector.result(),
+              sampleRate: before.sampleRate,
+            })
         })
         const stopWatch = setInterval(() => {
           if (!sessionRef.current) finish(null)
         }, 500)
       })
     },
-    [onChunk, recentAudio],
+    [onChunk, recentAudio]
   )
 
-  return { status, level, error, start, stop, onChunk, recentAudio, captureSnippet }
+  return {
+    status,
+    level,
+    error,
+    start,
+    stop,
+    onChunk,
+    recentAudio,
+    captureSnippet,
+  }
 }

@@ -11,7 +11,10 @@ import { z } from "zod"
 import { INCIDENTS } from "./incidents"
 import type { IncidentTypeId } from "./types"
 
-const incidentIds = INCIDENTS.map((incident) => incident.id) as [IncidentTypeId, ...IncidentTypeId[]]
+const incidentIds = INCIDENTS.map((incident) => incident.id) as [
+  IncidentTypeId,
+  ...IncidentTypeId[],
+]
 
 export const LanguageSchema = z.enum(["en", "ar"])
 export const IncidentTypeIdSchema = z.enum(incidentIds)

@@ -16,7 +16,11 @@ export type StoredValue<T> = {
   write: (value: T) => void
 }
 
-export function createStoredValue<T extends string>(key: string, fallback: T, isValid: (value: string) => value is T): StoredValue<T> {
+export function createStoredValue<T extends string>(
+  key: string,
+  fallback: T,
+  isValid: (value: string) => value is T
+): StoredValue<T> {
   const listeners = new Set<() => void>()
   let memory = fallback // used when storage is unavailable
 

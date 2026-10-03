@@ -22,8 +22,14 @@ export class RingBuffer {
 
   push(chunk: Float32Array): void {
     // A chunk longer than the buffer: only its newest part can fit.
-    const input = chunk.length > this.samples.length ? chunk.subarray(chunk.length - this.samples.length) : chunk
-    const firstPart = Math.min(input.length, this.samples.length - this.writeIndex)
+    const input =
+      chunk.length > this.samples.length
+        ? chunk.subarray(chunk.length - this.samples.length)
+        : chunk
+    const firstPart = Math.min(
+      input.length,
+      this.samples.length - this.writeIndex
+    )
     this.samples.set(input.subarray(0, firstPart), this.writeIndex)
     this.samples.set(input.subarray(firstPart), 0)
     this.writeIndex = (this.writeIndex + input.length) % this.samples.length
@@ -33,7 +39,9 @@ export class RingBuffer {
   /** A copy of the buffered audio, oldest sample first. */
   snapshot(): Float32Array {
     const result = new Float32Array(this.filled)
-    const start = (this.writeIndex - this.filled + this.samples.length) % this.samples.length
+    const start =
+      (this.writeIndex - this.filled + this.samples.length) %
+      this.samples.length
     const firstPart = Math.min(this.filled, this.samples.length - start)
     result.set(this.samples.subarray(start, start + firstPart), 0)
     result.set(this.samples.subarray(0, this.filled - firstPart), firstPart)

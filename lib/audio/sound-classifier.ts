@@ -7,7 +7,11 @@
  * YAMNet locally costs nothing per use and sends no audio anywhere. The
  * interface keeps the model swappable.
  */
-import { AudioClassifier, FilesetResolver, type AudioClassifierResult } from "@mediapipe/tasks-audio"
+import {
+  AudioClassifier,
+  FilesetResolver,
+  type AudioClassifierResult,
+} from "@mediapipe/tasks-audio"
 
 import type { SoundFrame } from "@/lib/safety/types"
 
@@ -15,7 +19,11 @@ import { MEDIAPIPE_WASM_URL, YAMNET_MODEL_URL } from "./audio-settings"
 
 export interface SoundClassifier {
   /** Scores every known sound class for a clip of about one second. */
-  classify(samples: Float32Array, sampleRate: number, timeMs: number): SoundFrame
+  classify(
+    samples: Float32Array,
+    sampleRate: number,
+    timeMs: number
+  ): SoundFrame
   close(): void
 }
 
@@ -26,24 +34,35 @@ export async function createYamnetClassifier(): Promise<SoundClassifier> {
   })
 
   return {
-    classify: (samples, sampleRate, timeMs) => ({ timeMs, scores: highestScores(classifier.classify(samples, sampleRate)) }),
+    classify: (samples, sampleRate, timeMs) => ({
+      timeMs,
+      scores: highestScores(classifier.classify(samples, sampleRate)),
+    }),
     close: () => classifier.close(),
   }
 }
 
 /** A clip can produce several results (one per ~1 s window); keep each label's highest score. */
-export function highestScores(results: AudioClassifierResult[]): Record<string, number> {
+export function highestScores(
+  results: AudioClassifierResult[]
+): Record<string, number> {
   const scores: Record<string, number> = {}
   for (const result of results) {
     for (const category of result.classifications[0]?.categories ?? []) {
-      scores[category.categoryName] = Math.max(scores[category.categoryName] ?? 0, category.score)
+      scores[category.categoryName] = Math.max(
+        scores[category.categoryName] ?? 0,
+        category.score
+      )
     }
   }
   return scores
 }
 
 /** The strongest sounds in a frame, for the on-screen "what I hear" line used to tune thresholds. */
-export function topSounds(frame: SoundFrame, count = 3): { label: string; score: number }[] {
+export function topSounds(
+  frame: SoundFrame,
+  count = 3
+): { label: string; score: number }[] {
   return Object.entries(frame.scores)
     .map(([label, score]) => ({ label, score }))
     .sort((a, b) => b.score - a.score)

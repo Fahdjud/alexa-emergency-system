@@ -39,6 +39,17 @@ export function SimulatePanel({ disabled, onSimulate }: Props) {
 /** Uses the incident's first sound trigger if it has one, otherwise its first English phrase. */
 function simulatedMatch(incident: IncidentDefinition): TriggerMatch {
   const sound = incident.triggerSounds[0]
-  if (sound) return { incidentId: incident.id, source: "sound", label: sound.label, score: 1 }
-  return { incidentId: incident.id, source: "speech", phrase: incident.triggerPhrases.en[0] ?? "", language: "en" }
+  if (sound)
+    return {
+      incidentId: incident.id,
+      source: "sound",
+      label: sound.label,
+      score: 1,
+    }
+  return {
+    incidentId: incident.id,
+    source: "speech",
+    phrase: incident.triggerPhrases.en[0] ?? "",
+    language: "en",
+  }
 }

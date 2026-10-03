@@ -48,20 +48,30 @@ describe("SnippetCollector", () => {
   })
 
   it("concatenates parts in order", () => {
-    expect(Array.from(concatSamples([samples(1), samples(), samples(2, 3)]))).toEqual([1, 2, 3])
+    expect(
+      Array.from(concatSamples([samples(1), samples(), samples(2, 3)]))
+    ).toEqual([1, 2, 3])
   })
 })
 
 describe("encodeWav", () => {
   it("writes a 16-bit mono PCM header and clipped samples", () => {
     const wav = new DataView(encodeWav(samples(0, 1, -1, 2), 16_000))
-    const text = (offset: number) => String.fromCharCode(...new Uint8Array(wav.buffer, offset, 4))
-    expect([text(0), text(8), text(12), text(36)]).toEqual(["RIFF", "WAVE", "fmt ", "data"])
+    const text = (offset: number) =>
+      String.fromCharCode(...new Uint8Array(wav.buffer, offset, 4))
+    expect([text(0), text(8), text(12), text(36)]).toEqual([
+      "RIFF",
+      "WAVE",
+      "fmt ",
+      "data",
+    ])
     expect(wav.getUint16(22, true)).toBe(1) // mono
     expect(wav.getUint32(24, true)).toBe(16_000)
     expect(wav.getUint16(34, true)).toBe(16) // bits
     expect(wav.getUint32(40, true)).toBe(8) // 4 samples x 2 bytes
-    expect([44, 46, 48, 50].map((offset) => wav.getInt16(offset, true))).toEqual([0, 32767, -32768, 32767])
+    expect(
+      [44, 46, 48, 50].map((offset) => wav.getInt16(offset, true))
+    ).toEqual([0, 32767, -32768, 32767])
   })
 })
 

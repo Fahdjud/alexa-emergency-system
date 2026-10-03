@@ -22,5 +22,7 @@ export interface SpeechToText {
 const noTranscription: SpeechToText = { transcribe: async () => "" }
 
 export function getSpeechToText(): SpeechToText {
-  return getSttProvider() === "groq" ? createGroqSpeechToText() : noTranscription
+  return getSttProvider() === "groq"
+    ? createGroqSpeechToText()
+    : noTranscription
 }

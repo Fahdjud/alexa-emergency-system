@@ -16,14 +16,23 @@ export const DISMISS_CONFIDENCE = 0.8
 
 /** Ask the person unless the model is confident there is no incident. Doubt always means asking. */
 export function isIncident(classification: Classification): boolean {
-  return !(classification.incidentType === "none" && classification.confidence >= DISMISS_CONFIDENCE)
+  return !(
+    classification.incidentType === "none" &&
+    classification.confidence >= DISMISS_CONFIDENCE
+  )
 }
 
 /** Keeps the quote only if those exact words are in the transcript; models sometimes paraphrase. */
-export function verifiedQuote(quote: string | null, transcript: string): string | null {
+export function verifiedQuote(
+  quote: string | null,
+  transcript: string
+): string | null {
   if (!quote) return null
   const normalizedQuote = normalizeText(quote)
-  return normalizedQuote && containsPhrase(normalizeText(transcript), normalizedQuote) ? quote : null
+  return normalizedQuote &&
+    containsPhrase(normalizeText(transcript), normalizedQuote)
+    ? quote
+    : null
 }
 
 /** Severity always comes from the config, so escalation timings never depend on the model. */

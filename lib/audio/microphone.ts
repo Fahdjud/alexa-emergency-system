@@ -14,10 +14,17 @@ export type MicrophoneSession = {
   stop: () => void
 }
 
-export async function startMicrophone(onChunk: (chunk: Float32Array) => void): Promise<MicrophoneSession> {
+export async function startMicrophone(
+  onChunk: (chunk: Float32Array) => void
+): Promise<MicrophoneSession> {
   const stream = await navigator.mediaDevices.getUserMedia({
     // Browser speech processing is tuned for calls: it suppresses alarms, bangs and screams.
-    audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    audio: {
+      channelCount: 1,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    },
   })
 
   try {
@@ -26,9 +33,12 @@ export async function startMicrophone(onChunk: (chunk: Float32Array) => void): P
     const source = context.createMediaStreamSource(stream)
     const capture = new AudioWorkletNode(context, "capture-processor", {
       numberOfOutputs: 0, // a sink: nothing is played back
-      processorOptions: { chunkSize: Math.round((context.sampleRate * CHUNK_MS) / 1000) },
+      processorOptions: {
+        chunkSize: Math.round((context.sampleRate * CHUNK_MS) / 1000),
+      },
     })
-    capture.port.onmessage = (event: MessageEvent<Float32Array>) => onChunk(event.data)
+    capture.port.onmessage = (event: MessageEvent<Float32Array>) =>
+      onChunk(event.data)
     source.connect(capture)
 
     return {
@@ -49,9 +59,13 @@ export async function startMicrophone(onChunk: (chunk: Float32Array) => void): P
 /** A short, human message for why the microphone could not start. */
 export function describeMicrophoneError(error: unknown): string {
   const name = error instanceof DOMException ? error.name : ""
-  if (name === "NotAllowedError") return "Microphone access is blocked. Allow it in the browser's site settings, then try again."
-  if (name === "NotFoundError") return "No microphone was found. Connect one, then try again."
-  if (name === "NotReadableError") return "The microphone is in use by another app. Close it, then try again."
-  if (!window.isSecureContext) return "The microphone only works over https:// or on localhost."
+  if (name === "NotAllowedError")
+    return "Microphone access is blocked. Allow it in the browser's site settings, then try again."
+  if (name === "NotFoundError")
+    return "No microphone was found. Connect one, then try again."
+  if (name === "NotReadableError")
+    return "The microphone is in use by another app. Close it, then try again."
+  if (!window.isSecureContext)
+    return "The microphone only works over https:// or on localhost."
   return "The microphone could not start. Check your microphone settings, then try again."
 }
