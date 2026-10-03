@@ -29,3 +29,15 @@ export const REPLY_HINT: Record<Language, string> = {
   en: "Say I'm fine, or say help.",
   ar: "قل أنا بخير، أو قل ساعدني.",
 }
+
+/** What the device says after the answer. */
+export const OUTCOME_LINES: Record<"cancelled" | "escalated", Record<Language, string>> = {
+  cancelled: {
+    en: "Okay, I'm glad you're fine. I'll keep listening.",
+    ar: "حسنًا، الحمد لله أنك بخير. سأبقى أستمع.",
+  },
+  escalated: {
+    en: `I'm alerting your contacts now. If you can, call ${EMERGENCY_NUMBERS.unified}.`,
+    ar: `سأنبه جهات الاتصال الآن. إذا استطعت، اتصل على ${EMERGENCY_NUMBERS.unified}.`,
+  },
+}

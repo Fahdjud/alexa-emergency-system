@@ -182,3 +182,9 @@ export const SEVERITY_RANK: Record<Severity, number> = { critical: 0, high: 1, m
 
 /** How long the person has to answer the confirmation question before we escalate. */
 export const CONFIRMATION_TIMEOUT_MS = 30_000
+
+/**
+ * After "I'm fine", the same incident is ignored for this long. An alarm can
+ * keep sounding for minutes; we ask again if it is still going after this.
+ */
+export const SNOOZE_AFTER_CANCEL_MS = 60_000
