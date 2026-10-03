@@ -106,13 +106,19 @@ describe("checkEnvironment", () => {
     ).toMatch(/different Supabase project/)
   })
 
-  it("warns on an unusual Anthropic key prefix and rejects a wrong one", () => {
+  it("accepts every Anthropic key format except admin keys", () => {
+    for (const key of ["sk-ant-api03-x", "sk-ant-usr-x"]) {
+      expect(
+        resultFor({ ...valid, ANTHROPIC_API_KEY: key }, "ANTHROPIC_API_KEY")
+          ?.status
+      ).toBe("ok")
+    }
     expect(
       resultFor(
-        { ...valid, ANTHROPIC_API_KEY: "sk-ant-usr-x" },
+        { ...valid, ANTHROPIC_API_KEY: "sk-ant-admin01-x" },
         "ANTHROPIC_API_KEY"
       )?.status
-    ).toBe("warning")
+    ).toBe("invalid")
     expect(
       resultFor({ ...valid, ANTHROPIC_API_KEY: "abc" }, "ANTHROPIC_API_KEY")
         ?.status
