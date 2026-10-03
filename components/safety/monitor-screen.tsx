@@ -72,6 +72,14 @@ export function MonitorScreen() {
           </p>
         </header>
 
+        {!monitor.deviceToken && <DeviceTokenSetup onSave={monitor.setDeviceToken} />}
+
+        {state.phase === "checking" && (
+          <p className="m-0 rounded-[10px] border border-[#26718a] bg-[#10283a] p-4 text-sm text-[#a4efff]" role="status">
+            Heard something ({getIncident(state.incident.incidentId).label}). Checking what was said...
+          </p>
+        )}
+
         {state.phase === "confirming" && (
           <ConfirmationPrompt incident={state.incident} deadlineMs={state.deadlineMs} language={monitor.language} onAnswer={monitor.answer} />
         )}
@@ -132,11 +140,14 @@ export function MonitorScreen() {
             <p className="m-0 text-xs text-[#a7adb2]">Nothing detected yet.</p>
           ) : (
             <ul className="m-0 grid list-none gap-1 p-0 text-sm">
-              {monitor.detections.map(({ id, atMs, match }) => (
+              {monitor.detections.map(({ id, atMs, match, note }) => (
                 <li className="flex justify-between gap-3 border-t border-[#23354a] pt-1 first:border-t-0 first:pt-0" key={id}>
                   <span>{getIncident(match.incidentId).label}</span>
-                  <span className="text-xs text-[#a8bacb]" dir="auto">
-                    {describeTrigger(match)} · {new Date(atMs).toLocaleTimeString()}
+                  <span className="grid text-end text-xs text-[#a8bacb]" dir="auto">
+                    <span>
+                      {describeTrigger(match)} · {new Date(atMs).toLocaleTimeString()}
+                    </span>
+                    {note && <span className="text-[#7f93a8]">{note}</span>}
                   </span>
                 </li>
               ))}
@@ -146,12 +157,49 @@ export function MonitorScreen() {
 
         <details className={cardClass}>
           <summary className="cursor-pointer text-sm font-semibold text-[#d4e0ec]">Test tools</summary>
+          {monitor.deviceToken && (
+            <Button className={`${outlineButtonClass} justify-self-start`} variant="outline" size="sm" onClick={() => monitor.setDeviceToken("")}>
+              Forget this device&apos;s token
+            </Button>
+          )}
           <p className="m-0 text-xs text-[#a7adb2]">Simulate a trigger (same flow as a real one):</p>
           <SimulatePanel disabled={!listening || state.phase !== "listening"} onSimulate={monitor.simulate} />
           <BufferTools listening={listening} recentAudio={audio.recentAudio} captureSnippet={audio.captureSnippet} />
         </details>
       </div>
     </main>
+  )
+}
+
+function DeviceTokenSetup({ onSave }: { onSave: (token: string) => void }) {
+  const [token, setToken] = useState("")
+  return (
+    <form
+      className={cardClass}
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (token.trim()) onSave(token.trim())
+      }}
+    >
+      <h2 className="m-0 text-sm font-semibold text-[#d4e0ec]">Set up this device</h2>
+      <p className="m-0 text-xs text-[#a7adb2]">
+        Enter the household&apos;s MONITOR_DEVICE_TOKEN once. It lets this tab check what was said and send alerts. It is kept in this
+        browser only. Without it, every trigger goes straight to the &quot;Are you okay?&quot; question.
+      </p>
+      <div className="flex gap-2">
+        <input
+          className="h-9 flex-1 rounded-md border border-[#263d54] bg-[#091523] px-3 text-sm outline-none focus:border-[#168aa4]"
+          type="password"
+          autoComplete="off"
+          aria-label="Device token"
+          value={token}
+          onChange={(event) => setToken(event.target.value)}
+        />
+        <Button className="bg-[#00c8f4] text-[#06131c] hover:bg-[#59ddf5]" type="submit" disabled={!token.trim()}>
+          Save
+        </Button>
+      </div>
+    </form>
   )
 }
 

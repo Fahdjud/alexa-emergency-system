@@ -8,9 +8,11 @@
  * place that wires them together, so the screen only renders state and calls
  * actions.
  *
- * Flow: trigger -> say the question (recognition paused so we never hear
- * ourselves) -> listen for the answer or a button press -> "fine" cancels,
- * "help" or 30 s of silence escalates.
+ * Flow: trigger -> (speech triggers only) transcribe + classify the snippet
+ * on the server; a confident "not an incident" is logged and dropped, and any
+ * failure falls through -> say the question (recognition paused so we never
+ * hear ourselves) -> listen for the answer or a button press -> "fine"
+ * cancels, "help" or 30 s of silence escalates.
  */
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react"
 
@@ -18,9 +20,11 @@ import { useAudioCapture } from "@/hooks/use-audio-capture"
 import { useSoundTriggers } from "@/hooks/use-sound-triggers"
 import { speak, stopSpeaking } from "@/lib/audio/speak"
 import { createWebSpeechListener, type SpeechListener, type SpeechListenerStatus } from "@/lib/audio/speech-listener"
+import { checkIncident } from "@/lib/client/check-incident"
+import { createStoredValue } from "@/lib/client/stored-value"
 import { interpretReply } from "@/lib/safety/confirmation"
 import { getIncident, SNOOZE_AFTER_CANCEL_MS } from "@/lib/safety/incidents"
-import { matchPhrase, pickMostSevere } from "@/lib/safety/match-trigger"
+import { matchPhrase, needsAiCheck, pickMostSevere } from "@/lib/safety/match-trigger"
 import { initialMonitorState, monitorReducer } from "@/lib/safety/monitor-machine"
 import { OUTCOME_LINES, REPLY_HINT, SPEECH_LANGUAGE_TAGS } from "@/lib/safety/region"
 import type { IncidentTypeId, Language, ReplyIntent, TriggerMatch } from "@/lib/safety/types"
@@ -28,18 +32,24 @@ import type { IncidentTypeId, Language, ReplyIntent, TriggerMatch } from "@/lib/
 /** Interim speech results repeat; report the same spoken incident at most this often. */
 const PHRASE_COOLDOWN_MS = 10_000
 const RESUME_AFTER_CANCEL_MS = 4000
-const LANGUAGE_STORAGE_KEY = "safety-monitor-language"
+
+/** Remembered in this browser only. The device token is what lets this tab call the server. */
+const languageStore = createStoredValue<Language>("safety-monitor-language", "en", (value): value is Language => value === "en" || value === "ar")
+const deviceTokenStore = createStoredValue<string>("safety-monitor-device-token", "", (value): value is string => value.length > 0)
 
 export type DialogueLine = { id: number; role: "user" | "alexa"; text: string }
+
+export type Detection = { id: string; atMs: number; match: TriggerMatch; note?: string }
 
 export function useSafetyMonitor() {
   const audio = useAudioCapture()
   const [state, dispatch] = useReducer(monitorReducer, initialMonitorState)
-  const language = useSyncExternalStore(subscribeToLanguage, readStoredLanguage, () => DEFAULT_LANGUAGE)
+  const language = useSyncExternalStore(languageStore.subscribe, languageStore.read, languageStore.readOnServer)
+  const deviceToken = useSyncExternalStore(deviceTokenStore.subscribe, deviceTokenStore.read, deviceTokenStore.readOnServer)
   const [speechStatus, setSpeechStatus] = useState<SpeechListenerStatus>("off")
   const [lastHeard, setLastHeard] = useState("")
   const [dialogue, setDialogue] = useState<DialogueLine[]>([])
-  const [detections, setDetections] = useState<{ id: string; atMs: number; match: TriggerMatch }[]>([])
+  const [detections, setDetections] = useState<Detection[]>([])
 
   const stateRef = useRef(state)
   const languageRef = useRef(language)
@@ -60,13 +70,39 @@ export function useSafetyMonitor() {
     setDialogue((current) => [...current, { id, role, text: isolated }].slice(-30))
   }, [])
 
-  const handleTrigger = useCallback((match: TriggerMatch) => {
-    const nowMs = Date.now()
-    if ((snoozedUntil.current.get(match.incidentId) ?? 0) > nowMs) return
-    setDetections((current) => [{ id: `${nowMs}-${match.incidentId}`, atMs: nowMs, match }, ...current].slice(0, 8))
-    // The AI check arrives with the server step; until then every trigger goes straight to the question.
-    dispatch({ type: "trigger", match, needsAiCheck: false, nowMs })
-  }, [])
+  const { captureSnippet } = audio
+  const handleTrigger = useCallback(
+    (match: TriggerMatch, options: { simulated?: boolean } = {}) => {
+      const nowMs = Date.now()
+      if ((snoozedUntil.current.get(match.incidentId) ?? 0) > nowMs) return
+      const detectionId = `${nowMs}-${match.incidentId}`
+      setDetections((current) => [{ id: detectionId, atMs: nowMs, match }, ...current].slice(0, 8))
+      const note = (text: string) =>
+        setDetections((current) => current.map((detection) => (detection.id === detectionId ? { ...detection, note: text } : detection)))
+
+      const token = deviceTokenStore.read()
+      const runAiCheck = !options.simulated && needsAiCheck(match) && token !== ""
+      dispatch({ type: "trigger", match, needsAiCheck: runAiCheck, nowMs })
+      if (!runAiCheck) return
+
+      void (async () => {
+        const snippet = await captureSnippet()
+        const result = snippet ? await checkIncident({ ...snippet, trigger: match, language: languageRef.current, deviceToken: token }) : null
+        // Only answer for this trigger: a more severe one may have taken over meanwhile.
+        const current = stateRef.current
+        if (current.phase !== "checking" || current.incident.startedAtMs !== nowMs) return
+        if (!result) {
+          note("AI check unavailable, asked anyway")
+          dispatch({ type: "ai-check-failed", nowMs: Date.now() })
+          return
+        }
+        const heard = result.transcript ? `“${result.transcript}”` : "no speech"
+        note(result.isIncident ? `Checked (${heard}), asking` : `Checked (${heard}), not an incident`)
+        dispatch({ type: "ai-check-done", isIncident: result.isIncident, nowMs: Date.now() })
+      })()
+    },
+    [captureSnippet],
+  )
 
   const handleTranscript = useCallback(
     (text: string, isFinal: boolean) => {
@@ -90,7 +126,8 @@ export function useSafetyMonitor() {
   )
 
   const listening = audio.status === "on"
-  const sounds = useSoundTriggers({ listening, onChunk: audio.onChunk, onTrigger: handleTrigger })
+  const onSoundTrigger = useCallback((match: TriggerMatch) => handleTrigger(match), [handleTrigger])
+  const sounds = useSoundTriggers({ listening, onChunk: audio.onChunk, onTrigger: onSoundTrigger })
 
   // Keep the state machine in step with the microphone.
   useEffect(() => {
@@ -167,7 +204,9 @@ export function useSafetyMonitor() {
     audio,
     state,
     language,
-    setLanguage: storeLanguage,
+    setLanguage: languageStore.write,
+    deviceToken,
+    setDeviceToken: deviceTokenStore.write,
     soundStatus: sounds.status,
     hearing: sounds.hearing,
     speechStatus: listening ? speechStatus : "off",
@@ -178,38 +217,6 @@ export function useSafetyMonitor() {
     stop,
     answer,
     resume,
-    simulate: handleTrigger,
+    simulate: (match: TriggerMatch) => handleTrigger(match, { simulated: true }),
   }
-}
-
-// The chosen language is remembered in this browser. Kept outside React state so it survives reloads
-// and the server render (which cannot see localStorage) always starts in the default language.
-const DEFAULT_LANGUAGE: Language = "en"
-const languageListeners = new Set<() => void>()
-let languageFallback: Language = DEFAULT_LANGUAGE // used when storage is unavailable (private window)
-
-function subscribeToLanguage(listener: () => void) {
-  languageListeners.add(listener)
-  return () => {
-    languageListeners.delete(listener)
-  }
-}
-
-function readStoredLanguage(): Language {
-  try {
-    const value = localStorage.getItem(LANGUAGE_STORAGE_KEY)
-    return value === "en" || value === "ar" ? value : languageFallback
-  } catch {
-    return languageFallback
-  }
-}
-
-function storeLanguage(language: Language) {
-  languageFallback = language
-  try {
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
-  } catch {
-    // Not remembered after a reload, but still applied now.
-  }
-  languageListeners.forEach((listener) => listener())
 }
