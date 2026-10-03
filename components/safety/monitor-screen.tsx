@@ -14,6 +14,7 @@ import { useState } from "react"
 
 import { ConversationThread } from "@/components/alexa/conversation"
 import { ConfirmationPrompt } from "@/components/safety/confirmation-prompt"
+import { ContactsPanel } from "@/components/safety/contacts-panel"
 import { SimulatePanel } from "@/components/safety/simulate-panel"
 import { Button } from "@/components/ui/button"
 import type { AudioClip } from "@/hooks/use-audio-capture"
@@ -21,8 +22,10 @@ import type { ClassifierStatus } from "@/hooks/use-sound-triggers"
 import { useSafetyMonitor } from "@/hooks/use-safety-monitor"
 import { AFTER_TRIGGER_SECONDS, BUFFER_SECONDS } from "@/lib/audio/audio-settings"
 import type { SpeechListenerStatus } from "@/lib/audio/speech-listener"
+import type { IncidentStatusView } from "@/lib/client/safety-api"
 import { encodeWav } from "@/lib/audio/wav"
 import { getIncident } from "@/lib/safety/incidents"
+import { EMERGENCY_NUMBERS } from "@/lib/safety/region"
 import type { Language, TriggerMatch } from "@/lib/safety/types"
 
 const outlineButtonClass =
@@ -88,8 +91,8 @@ export function MonitorScreen() {
           <section className="grid gap-3 rounded-[12px] border-2 border-[#e86b5f] bg-[#2b1311] p-5 text-center" role="alert">
             <h2 className="m-0 text-xl font-semibold text-[#ffd9d4]">Getting help</h2>
             <p className="m-0 text-sm text-[#f5b8b0]">
-              {getIncident(state.incident.incidentId).label}:{" "}
-              {state.reason === "no-answer" ? "no answer in time." : "help was requested."} Contacts will be alerted (alerts are added in the next step).
+              {getIncident(state.incident.incidentId).label}: {state.reason === "no-answer" ? "no answer in time." : "help was requested."}{" "}
+              {escalationProgress(monitor.serverStatus, Boolean(monitor.deviceToken))}
             </p>
             <Button className={outlineButtonClass} variant="outline" onClick={monitor.resume}>
               Back to listening
@@ -164,6 +167,12 @@ export function MonitorScreen() {
           )}
           <p className="m-0 text-xs text-[#a7adb2]">Simulate a trigger (same flow as a real one):</p>
           <SimulatePanel disabled={!listening || state.phase !== "listening"} onSimulate={monitor.simulate} />
+          {monitor.deviceToken && (
+            <>
+              <h3 className="m-0 mt-2 text-sm font-semibold text-[#d4e0ec]">Emergency contacts</h3>
+              <ContactsPanel deviceToken={monitor.deviceToken} />
+            </>
+          )}
           <BufferTools listening={listening} recentAudio={audio.recentAudio} captureSnippet={audio.captureSnippet} />
         </details>
       </div>
@@ -273,6 +282,14 @@ function LevelMeter({ level }: { level: number }) {
       <div className="h-full bg-[#48d4f2] transition-[width] duration-100 motion-reduce:transition-none" style={{ width: `${percent}%` }} />
     </div>
   )
+}
+
+function escalationProgress(status: IncidentStatusView | null, hasToken: boolean): string {
+  if (!hasToken) return `This device is not set up, so no one can be alerted. Call ${EMERGENCY_NUMBERS.unified} if you need help.`
+  if (!status) return "Alerting your contacts..."
+  if (status.status === "acknowledged") return `${status.acknowledgedBy ?? "A contact"} is handling it.`
+  if (status.status === "unacknowledged") return `Nobody has answered yet. Call ${EMERGENCY_NUMBERS.unified} if you can.`
+  return "Alerting your contacts, one by one, until someone answers."
 }
 
 function describeTrigger(match: TriggerMatch): string {

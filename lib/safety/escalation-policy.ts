@@ -96,3 +96,8 @@ export function nextEscalationAction(input: {
   const giveUpMs = startedAtMs + plan.giveUpAtMs
   return nowMs >= giveUpMs ? { type: "give-up", reason: "nobody-acknowledged" } : { type: "wait", untilMs: giveUpMs }
 }
+
+/** True when this step is the first time the contact is alerted; later steps are reminders. */
+export function isFirstAlertFor(plan: EscalationPlan, stepIndex: number, contactId: string): boolean {
+  return plan.steps.slice(0, stepIndex).every((step) => !step.contactIds.includes(contactId))
+}

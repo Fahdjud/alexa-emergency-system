@@ -1,7 +1,7 @@
 // Tests for the escalation rules: who is alerted, when, and when we stop.
 import { describe, expect, it } from "vitest"
 
-import { buildEscalationPlan, nextEscalationAction } from "./escalation-policy"
+import { buildEscalationPlan, isFirstAlertFor, nextEscalationAction } from "./escalation-policy"
 import type { Contact } from "./types"
 
 const MINUTE = 60_000
@@ -75,5 +75,15 @@ describe("nextEscalationAction", () => {
       type: "give-up",
       reason: "no-contacts",
     })
+  })
+})
+
+describe("isFirstAlertFor", () => {
+  it("is true only the first time a contact appears in the plan", () => {
+    const plan = buildEscalationPlan("high", contacts) // daughter, son, then everyone x3
+    expect(isFirstAlertFor(plan, 0, "daughter")).toBe(true)
+    expect(isFirstAlertFor(plan, 1, "son")).toBe(true)
+    expect(isFirstAlertFor(plan, 2, "daughter")).toBe(false)
+    expect(isFirstAlertFor(plan, 2, "son")).toBe(false)
   })
 })

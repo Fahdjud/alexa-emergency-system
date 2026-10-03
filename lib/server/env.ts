@@ -29,7 +29,9 @@ export function getClassifierProvider(): "anthropic" | "rules" {
 }
 
 /** Throws a clear error naming the variable, instead of a confusing provider error later. */
-export function requireEnv(name: "ANTHROPIC_API_KEY" | "GROQ_API_KEY"): string {
+export function requireEnv(
+  name: "ANTHROPIC_API_KEY" | "GROQ_API_KEY" | "ACK_TOKEN_SECRET" | "CRON_SECRET" | "TELEGRAM_WEBHOOK_SECRET",
+): string {
   const value = process.env[name]
   if (!value) throw new Error(`${name} is not set. Add it to .env.local (or Vercel) and restart.`)
   return value
