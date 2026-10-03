@@ -78,3 +78,14 @@ export function needsAiCheck(match: TriggerMatch, incidents: IncidentDefinition[
   const incident = incidents.find((entry) => entry.id === match.incidentId)
   return incident?.aiCheck[match.source] ?? true
 }
+
+/** Enough classifier history for the longest sustained sound in the config, plus a margin. */
+export function soundHistoryMs(incidents: IncidentDefinition[] = INCIDENTS): number {
+  const longest = Math.max(0, ...incidents.flatMap((incident) => incident.triggerSounds.map((trigger) => trigger.sustainedMs ?? 0)))
+  return longest + 2000
+}
+
+/** Adds a frame and drops frames too old to matter, so memory stays constant. */
+export function addSoundFrame(frames: SoundFrame[], frame: SoundFrame, keepMs = soundHistoryMs()): SoundFrame[] {
+  return [...frames, frame].filter((existing) => existing.timeMs >= frame.timeMs - keepMs)
+}

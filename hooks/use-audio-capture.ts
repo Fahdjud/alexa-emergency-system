@@ -21,7 +21,7 @@ export type CaptureStatus = "off" | "starting" | "on" | "error"
 
 export type AudioClip = { samples: Float32Array; sampleRate: number }
 
-type ChunkListener = (chunk: Float32Array, sampleRate: number) => void
+export type ChunkListener = (chunk: Float32Array, sampleRate: number) => void
 
 export function useAudioCapture() {
   const [status, setStatus] = useState<CaptureStatus>("off")

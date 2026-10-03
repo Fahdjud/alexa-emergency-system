@@ -2,21 +2,24 @@
 
 /*
  * monitor-screen.tsx: the always-on safety monitor screen. This step shows
- * microphone status, a level meter and test buttons for the rolling buffer.
- * Later steps add sound and phrase triggers, the "Are you okay?" prompt and
- * the incident log.
+ * microphone status, a level meter, what the sound model hears, detected
+ * incidents, and test buttons for the rolling buffer. Later steps add phrase
+ * triggers, the "Are you okay?" prompt and alerts.
  *
  * Why this file exists: the existing AlexaAssistant is a push-to-talk chat
  * and cannot listen continuously. This is a new screen, so the demo at "/"
  * stays unchanged. Teammates can restyle it freely; the logic lives in
  * hooks/use-audio-capture.ts.
  */
-import { useState } from "react"
+import { useCallback, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { useAudioCapture, type AudioClip } from "@/hooks/use-audio-capture"
+import { useSoundTriggers, type ClassifierStatus } from "@/hooks/use-sound-triggers"
 import { AFTER_TRIGGER_SECONDS, BUFFER_SECONDS } from "@/lib/audio/audio-settings"
 import { encodeWav } from "@/lib/audio/wav"
+import { getIncident } from "@/lib/safety/incidents"
+import type { TriggerMatch } from "@/lib/safety/types"
 
 const outlineButtonClass =
   "border-[#263c53] bg-[#101e2d] text-[#d4e0ec] hover:border-[#287b95] hover:bg-[#14283b] hover:text-white focus-visible:ring-[#00c8f4]"
@@ -28,10 +31,28 @@ const statusText = {
   error: "",
 }
 
+const classifierText: Record<ClassifierStatus, string> = {
+  off: "",
+  loading: "Loading the sound model (about 4 MB)...",
+  ready: "",
+  error: "The sound model could not load. Check the internet connection, then stop and start listening.",
+}
+
+const MAX_DETECTIONS_SHOWN = 8
+
+type Detection = { id: string; atMs: number; match: TriggerMatch }
+
 export function MonitorScreen() {
   const audio = useAudioCapture()
   const [recordingSnippet, setRecordingSnippet] = useState(false)
+  const [detections, setDetections] = useState<Detection[]>([])
   const listening = audio.status === "on"
+
+  const recordDetection = useCallback((match: TriggerMatch) => {
+    const atMs = Date.now()
+    setDetections((current) => [{ id: `${atMs}-${match.incidentId}`, atMs, match }, ...current].slice(0, MAX_DETECTIONS_SHOWN))
+  }, [])
+  const sounds = useSoundTriggers({ listening, onChunk: audio.onChunk, onTrigger: recordDetection })
 
   async function recordTestSnippet() {
     setRecordingSnippet(true)
@@ -70,6 +91,30 @@ export function MonitorScreen() {
             </Button>
           </div>
           <LevelMeter level={audio.level} />
+          {classifierText[sounds.status] && <p className="m-0 text-xs text-[#a8bacb]">{classifierText[sounds.status]}</p>}
+          {sounds.hearing.length > 0 && (
+            <p className="m-0 text-xs text-[#a8bacb]">
+              Hearing: {sounds.hearing.map(({ label, score }) => `${label} ${Math.round(score * 100)}%`).join(" · ")}
+            </p>
+          )}
+        </section>
+
+        <section className="grid gap-2 rounded-[10px] border border-[#263d54] bg-[#0e1b2a] p-4" aria-live="polite">
+          <h2 className="m-0 text-sm font-semibold text-[#d4e0ec]">Detections</h2>
+          {detections.length === 0 ? (
+            <p className="m-0 text-xs text-[#a7adb2]">Nothing detected yet.</p>
+          ) : (
+            <ul className="m-0 grid list-none gap-1 p-0 text-sm">
+              {detections.map(({ id, atMs, match }) => (
+                <li className="flex justify-between gap-3 border-t border-[#23354a] pt-1 first:border-t-0 first:pt-0" key={id}>
+                  <span>{getIncident(match.incidentId).label}</span>
+                  <span className="text-xs text-[#a8bacb]">
+                    {describeTrigger(match)} · {new Date(atMs).toLocaleTimeString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="grid gap-3 rounded-[10px] border border-[#263d54] bg-[#0e1b2a] p-4">
@@ -106,6 +151,10 @@ function LevelMeter({ level }: { level: number }) {
       <div className="h-full bg-[#48d4f2] transition-[width] duration-100 motion-reduce:transition-none" style={{ width: `${percent}%` }} />
     </div>
   )
+}
+
+function describeTrigger(match: TriggerMatch): string {
+  return match.source === "sound" ? `${match.label} ${Math.round(match.score * 100)}%` : `"${match.phrase}"`
 }
 
 function downloadWav(clip: AudioClip, fileName: string) {

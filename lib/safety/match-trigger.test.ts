@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest"
 
 import { INCIDENTS } from "./incidents"
-import { matchPhrase, matchSound, needsAiCheck, pickMostSevere } from "./match-trigger"
+import { addSoundFrame, matchPhrase, matchSound, needsAiCheck, pickMostSevere, soundHistoryMs } from "./match-trigger"
 import { normalizeText } from "./normalize-text"
 import type { SoundFrame } from "./types"
 
@@ -108,5 +108,17 @@ describe("pickMostSevere and needsAiCheck", () => {
     const [sound] = matchSound([frame(0, { "Thump, thud": 0.9 })])
     expect(needsAiCheck(speech)).toBe(true)
     expect(needsAiCheck(sound)).toBe(false)
+  })
+})
+
+describe("sound history", () => {
+  it("keeps enough history for the longest sustained sound", () => {
+    expect(soundHistoryMs()).toBe(10_000) // crying: 8 s + 2 s margin
+  })
+
+  it("drops frames older than the history window", () => {
+    let frames: SoundFrame[] = []
+    for (let second = 0; second <= 20; second++) frames = addSoundFrame(frames, frame(second * 1000, {}), 5000)
+    expect(frames.map((f) => f.timeMs)).toEqual([15_000, 16_000, 17_000, 18_000, 19_000, 20_000])
   })
 })
