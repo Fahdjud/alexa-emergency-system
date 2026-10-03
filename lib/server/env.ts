@@ -37,9 +37,12 @@ export function requireEnv(
     | "CRON_SECRET"
     | "TELEGRAM_WEBHOOK_SECRET"
     | "SUPABASE_URL"
-    | "SUPABASE_SERVICE_ROLE_KEY",
+    | "SUPABASE_SERVICE_ROLE_KEY"
 ): string {
   const value = process.env[name]
-  if (!value) throw new Error(`${name} is not set. Add it to .env.local (or Vercel) and restart.`)
+  if (!value)
+    throw new Error(
+      `${name} is not set. Add it to .env.local (or Vercel) and restart.`
+    )
   return value
 }

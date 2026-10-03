@@ -40,7 +40,10 @@ describe("interpretReply", () => {
     expect(interpretReply("No, I'm fine")).toBe("help") // ambiguous: safety wins
   })
 
-  it.each(["", "what?", "the weather is nice", "مرحبا"])("reads %j as unclear", (reply) => {
-    expect(interpretReply(reply)).toBe("unclear")
-  })
+  it.each(["", "what?", "the weather is nice", "مرحبا"])(
+    "reads %j as unclear",
+    (reply) => {
+      expect(interpretReply(reply)).toBe("unclear")
+    }
+  )
 })

@@ -31,7 +31,12 @@ export const INCIDENTS: IncidentDefinition[] = [
       { label: "Fire alarm", minScore: 0.3 },
     ],
     triggerPhrases: {
-      en: ["there is a fire", "something is burning", "i smell smoke", "i smell gas"],
+      en: [
+        "there is a fire",
+        "something is burning",
+        "i smell smoke",
+        "i smell gas",
+      ],
       ar: ["حريق", "فيه دخان", "ريحة غاز", "ريحة دخان"],
     },
     confirmationQuestion: {
@@ -178,7 +183,11 @@ export function getIncident(id: IncidentTypeId): IncidentDefinition {
 }
 
 /** Lower is more severe. Used to pick between simultaneous triggers. */
-export const SEVERITY_RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 2 }
+export const SEVERITY_RANK: Record<Severity, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+}
 
 /** How long the person has to answer the confirmation question before we escalate. */
 export const CONFIRMATION_TIMEOUT_MS = 30_000

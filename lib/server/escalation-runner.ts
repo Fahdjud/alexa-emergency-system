@@ -15,13 +15,30 @@
  */
 import "server-only"
 
-import { buildEscalationPlan, isFirstAlertFor, nextEscalationAction } from "@/lib/safety/escalation-policy"
+import {
+  buildEscalationPlan,
+  isFirstAlertFor,
+  nextEscalationAction,
+} from "@/lib/safety/escalation-policy"
 import { getIncident } from "@/lib/safety/incidents"
 
-import { ACK_TOKEN_LIFETIME_MS, signAckToken, type AckClaims } from "./ack-token"
-import { acknowledgedText, alertText, cancelledNoteText, unacknowledgedText } from "./alert-message"
+import {
+  ACK_TOKEN_LIFETIME_MS,
+  signAckToken,
+  type AckClaims,
+} from "./ack-token"
+import {
+  acknowledgedText,
+  alertText,
+  cancelledNoteText,
+  unacknowledgedText,
+} from "./alert-message"
 import type { Notifier, OutgoingMessage } from "./providers/notifier"
-import type { ContactRecord, IncidentRecord, IncidentStore } from "./providers/store"
+import type {
+  ContactRecord,
+  IncidentRecord,
+  IncidentStore,
+} from "./providers/store"
 
 export type EscalationDeps = {
   store: IncidentStore
@@ -34,34 +51,60 @@ export type EscalationDeps = {
 export type Answer = "fine" | "help" | "no-answer"
 
 /** The person's answer from the monitor page (or "no-answer" when their 30 s ran out). */
-export async function answerIncident(deps: EscalationDeps, incidentId: string, answer: Answer): Promise<IncidentRecord | null> {
+export async function answerIncident(
+  deps: EscalationDeps,
+  incidentId: string,
+  answer: Answer
+): Promise<IncidentRecord | null> {
   if (answer === "fine") {
-    const cancelled = await deps.store.updateIncidentIf(incidentId, { status: ["confirming"] }, { status: "cancelled" })
-    if (cancelled && getIncident(cancelled.incidentType).notifyOnCancel) await sendCancelledNote(deps, cancelled)
+    const cancelled = await deps.store.updateIncidentIf(
+      incidentId,
+      { status: ["confirming"] },
+      { status: "cancelled" }
+    )
+    if (cancelled && getIncident(cancelled.incidentType).notifyOnCancel)
+      await sendCancelledNote(deps, cancelled)
     return cancelled ?? deps.store.getIncident(incidentId)
   }
-  return startEscalation(deps, incidentId, answer === "help" ? "asked-for-help" : "no-answer")
+  return startEscalation(
+    deps,
+    incidentId,
+    answer === "help" ? "asked-for-help" : "no-answer"
+  )
 }
 
 export async function startEscalation(
   deps: EscalationDeps,
   incidentId: string,
-  reason: NonNullable<IncidentRecord["escalationReason"]>,
+  reason: NonNullable<IncidentRecord["escalationReason"]>
 ): Promise<IncidentRecord | null> {
   const started = await deps.store.updateIncidentIf(
     incidentId,
     { status: ["confirming"] },
-    { status: "escalating", escalationStartedAtMs: deps.nowMs, escalationReason: reason },
+    {
+      status: "escalating",
+      escalationStartedAtMs: deps.nowMs,
+      escalationReason: reason,
+    }
   )
   if (!started) return deps.store.getIncident(incidentId) // already escalating, cancelled or acknowledged
   return advanceEscalation(deps, started)
 }
 
 /** Sends the next due step, or gives up after the last round. Safe to call as often as you like. */
-export async function advanceEscalation(deps: EscalationDeps, incident: IncidentRecord): Promise<IncidentRecord | null> {
-  if (incident.status !== "escalating" || incident.escalationStartedAtMs === null) return incident
+export async function advanceEscalation(
+  deps: EscalationDeps,
+  incident: IncidentRecord
+): Promise<IncidentRecord | null> {
+  if (
+    incident.status !== "escalating" ||
+    incident.escalationStartedAtMs === null
+  )
+    return incident
 
-  const contacts = (await deps.store.listContacts()).filter((contact) => deps.notifier.canReach(contact))
+  const contacts = (await deps.store.listContacts()).filter((contact) =>
+    deps.notifier.canReach(contact)
+  )
   const plan = buildEscalationPlan(incident.severity, contacts)
   const action = nextEscalationAction({
     plan,
@@ -73,24 +116,44 @@ export async function advanceEscalation(deps: EscalationDeps, incident: Incident
 
   if (action.type === "notify") {
     const step = action.stepIndex
-    const claimed = await deps.store.updateIncidentIf(incident.id, { status: ["escalating"], stepsSent: step }, { stepsSent: step + 1 })
+    const claimed = await deps.store.updateIncidentIf(
+      incident.id,
+      { status: ["escalating"], stepsSent: step },
+      { stepsSent: step + 1 }
+    )
     if (!claimed) return deps.store.getIncident(incident.id) // another tick sent it, or it was acknowledged
 
-    const audio = incident.snippetPath ? await deps.store.getSnippet(incident.snippetPath) : null
-    await sendToEach(deps, contacts.filter((contact) => action.contactIds.includes(contact.id)), (contact) => {
-      const firstAlert = isFirstAlertFor(plan, step, contact.id)
-      return {
-        text: alertText(incident, { reminder: !firstAlert }),
-        action: { label: "I'm handling it / سأتولى الأمر", url: ackUrl(deps, incident.id, contact.id) },
-        audio: firstAlert && audio ? audio : undefined,
+    const audio = incident.snippetPath
+      ? await deps.store.getSnippet(incident.snippetPath)
+      : null
+    await sendToEach(
+      deps,
+      contacts.filter((contact) => action.contactIds.includes(contact.id)),
+      (contact) => {
+        const firstAlert = isFirstAlertFor(plan, step, contact.id)
+        return {
+          text: alertText(incident, { reminder: !firstAlert }),
+          action: {
+            label: "I'm handling it / سأتولى الأمر",
+            url: ackUrl(deps, incident.id, contact.id),
+          },
+          audio: firstAlert && audio ? audio : undefined,
+        }
       }
-    })
+    )
     return claimed
   }
 
   if (action.type === "give-up") {
-    const givenUp = await deps.store.updateIncidentIf(incident.id, { status: ["escalating"] }, { status: "unacknowledged" })
-    if (givenUp) await sendToEach(deps, contacts, () => ({ text: unacknowledgedText(givenUp) }))
+    const givenUp = await deps.store.updateIncidentIf(
+      incident.id,
+      { status: ["escalating"] },
+      { status: "unacknowledged" }
+    )
+    if (givenUp)
+      await sendToEach(deps, contacts, () => ({
+        text: unacknowledgedText(givenUp),
+      }))
     return givenUp
   }
 
@@ -98,7 +161,10 @@ export async function advanceEscalation(deps: EscalationDeps, incident: Incident
 }
 
 /** A contact tapped "I'm handling it". Stops escalation and tells the others. */
-export async function acknowledgeIncident(deps: EscalationDeps, claims: AckClaims): Promise<IncidentRecord | null> {
+export async function acknowledgeIncident(
+  deps: EscalationDeps,
+  claims: AckClaims
+): Promise<IncidentRecord | null> {
   const contacts = await deps.store.listContacts()
   const contact = contacts.find((entry) => entry.id === claims.contactId)
   if (!contact) return null
@@ -106,40 +172,76 @@ export async function acknowledgeIncident(deps: EscalationDeps, claims: AckClaim
   const acknowledged = await deps.store.updateIncidentIf(
     claims.incidentId,
     { status: ["escalating", "unacknowledged"] },
-    { status: "acknowledged", acknowledgedByContactId: contact.id, acknowledgedAtMs: deps.nowMs },
+    {
+      status: "acknowledged",
+      acknowledgedByContactId: contact.id,
+      acknowledgedAtMs: deps.nowMs,
+    }
   )
   if (!acknowledged) return deps.store.getIncident(claims.incidentId)
 
-  const others = contacts.filter((entry) => entry.id !== contact.id && deps.notifier.canReach(entry))
-  await sendToEach(deps, others, () => ({ text: acknowledgedText(acknowledged, contact.name) }))
+  const others = contacts.filter(
+    (entry) => entry.id !== contact.id && deps.notifier.canReach(entry)
+  )
+  await sendToEach(deps, others, () => ({
+    text: acknowledgedText(acknowledged, contact.name),
+  }))
   return acknowledged
 }
 
 /** One scheduled pass: escalate unanswered questions (e.g. the tab crashed), then advance every escalation. */
-export async function runEscalationTick(deps: EscalationDeps): Promise<{ escalated: number; advanced: number }> {
-  const unanswered = (await deps.store.listIncidentsByStatus(["confirming"])).filter((incident) => incident.confirmDeadlineMs <= deps.nowMs)
-  for (const incident of unanswered) await startEscalation(deps, incident.id, "no-answer")
+export async function runEscalationTick(
+  deps: EscalationDeps
+): Promise<{ escalated: number; advanced: number }> {
+  const unanswered = (
+    await deps.store.listIncidentsByStatus(["confirming"])
+  ).filter((incident) => incident.confirmDeadlineMs <= deps.nowMs)
+  for (const incident of unanswered)
+    await startEscalation(deps, incident.id, "no-answer")
 
   const escalating = await deps.store.listIncidentsByStatus(["escalating"])
   for (const incident of escalating) await advanceEscalation(deps, incident)
   return { escalated: unanswered.length, advanced: escalating.length }
 }
 
-async function sendCancelledNote(deps: EscalationDeps, incident: IncidentRecord) {
-  const first = (await deps.store.listContacts()).find((contact) => deps.notifier.canReach(contact))
-  if (first) await sendToEach(deps, [first], () => ({ text: cancelledNoteText(incident) }))
+async function sendCancelledNote(
+  deps: EscalationDeps,
+  incident: IncidentRecord
+) {
+  const first = (await deps.store.listContacts()).find((contact) =>
+    deps.notifier.canReach(contact)
+  )
+  if (first)
+    await sendToEach(deps, [first], () => ({
+      text: cancelledNoteText(incident),
+    }))
 }
 
 /** One failing contact must not stop the others from being alerted. */
-async function sendToEach(deps: EscalationDeps, contacts: ContactRecord[], message: (contact: ContactRecord) => OutgoingMessage) {
+async function sendToEach(
+  deps: EscalationDeps,
+  contacts: ContactRecord[],
+  message: (contact: ContactRecord) => OutgoingMessage
+) {
   await Promise.all(
     contacts.map((contact) =>
-      deps.notifier.send(contact, message(contact)).catch((error) => console.error(`Alert to ${contact.name} failed`, error)),
-    ),
+      deps.notifier
+        .send(contact, message(contact))
+        .catch((error) =>
+          console.error(`Alert to ${contact.name} failed`, error)
+        )
+    )
   )
 }
 
-function ackUrl(deps: EscalationDeps, incidentId: string, contactId: string): string {
-  const token = signAckToken({ incidentId, contactId, expiresAtMs: deps.nowMs + ACK_TOKEN_LIFETIME_MS }, deps.ackSecret)
+function ackUrl(
+  deps: EscalationDeps,
+  incidentId: string,
+  contactId: string
+): string {
+  const token = signAckToken(
+    { incidentId, contactId, expiresAtMs: deps.nowMs + ACK_TOKEN_LIFETIME_MS },
+    deps.ackSecret
+  )
   return `${deps.baseUrl}/ack/${token}`
 }

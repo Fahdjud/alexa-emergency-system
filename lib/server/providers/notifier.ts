@@ -27,5 +27,7 @@ export interface Notifier {
 }
 
 export function getNotifier(): Notifier {
-  return process.env.NOTIFIER_PROVIDER === "telegram" ? createTelegramNotifier() : consoleNotifier
+  return process.env.NOTIFIER_PROVIDER === "telegram"
+    ? createTelegramNotifier()
+    : consoleNotifier
 }

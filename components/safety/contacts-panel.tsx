@@ -12,7 +12,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react"
 
 import { Button } from "@/components/ui/button"
-import { addContact, listContacts, type ContactView } from "@/lib/client/safety-api"
+import {
+  addContact,
+  listContacts,
+  type ContactView,
+} from "@/lib/client/safety-api"
 
 export function ContactsPanel({ deviceToken }: { deviceToken: string }) {
   const [contacts, setContacts] = useState<ContactView[] | null>(null)
@@ -39,7 +43,11 @@ export function ContactsPanel({ deviceToken }: { deviceToken: string }) {
 
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const added = await addContact(name.trim(), (contacts?.length ?? 0) + 1, deviceToken)
+    const added = await addContact(
+      name.trim(),
+      (contacts?.length ?? 0) + 1,
+      deviceToken
+    )
     if (!added) return setError("Could not add the contact.")
     setName("")
     setError("")
@@ -48,14 +56,27 @@ export function ContactsPanel({ deviceToken }: { deviceToken: string }) {
 
   return (
     <div className="grid gap-2">
-      <p className="m-0 text-xs text-[#a7adb2]">Contacts are alerted in this order. Each one opens their invite link once to connect Telegram.</p>
-      {contacts?.length === 0 && <p className="m-0 text-xs text-[#e2b78e]">No contacts yet: nobody can be alerted.</p>}
+      <p className="m-0 text-xs text-[#a7adb2]">
+        Contacts are alerted in this order. Each one opens their invite link
+        once to connect Telegram.
+      </p>
+      {contacts?.length === 0 && (
+        <p className="m-0 text-xs text-[#e2b78e]">
+          No contacts yet: nobody can be alerted.
+        </p>
+      )}
       <ol className="m-0 grid gap-1 p-0 pl-5 text-sm">
         {contacts?.map((contact) => (
           <li key={contact.id}>
-            {contact.name} {contact.connected ? "✅ connected" : "⏳ not connected yet"}
+            {contact.name}{" "}
+            {contact.connected ? "✅ connected" : "⏳ not connected yet"}
             {!contact.connected && contact.inviteLink && (
-              <a className="ml-2 break-all text-xs text-[#65d6eb]" href={contact.inviteLink} target="_blank" rel="noreferrer">
+              <a
+                className="ml-2 text-xs break-all text-[#65d6eb]"
+                href={contact.inviteLink}
+                target="_blank"
+                rel="noreferrer"
+              >
                 {contact.inviteLink}
               </a>
             )}
@@ -70,10 +91,22 @@ export function ContactsPanel({ deviceToken }: { deviceToken: string }) {
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
-        <Button className="border-[#263c53] bg-[#101e2d] text-[#d4e0ec] hover:bg-[#14283b]" variant="outline" size="sm" type="submit" disabled={!name.trim()}>
+        <Button
+          className="border-[#263c53] bg-[#101e2d] text-[#d4e0ec] hover:bg-[#14283b]"
+          variant="outline"
+          size="sm"
+          type="submit"
+          disabled={!name.trim()}
+        >
           Add contact
         </Button>
-        <Button className="border-[#263c53] bg-[#101e2d] text-[#d4e0ec] hover:bg-[#14283b]" variant="outline" size="sm" type="button" onClick={refresh}>
+        <Button
+          className="border-[#263c53] bg-[#101e2d] text-[#d4e0ec] hover:bg-[#14283b]"
+          variant="outline"
+          size="sm"
+          type="button"
+          onClick={refresh}
+        >
           Refresh
         </Button>
       </form>

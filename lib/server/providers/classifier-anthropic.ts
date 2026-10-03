@@ -27,13 +27,20 @@ import type { IncidentClassifier } from "./incident-classifier"
 const MODEL = "claude-haiku-4-5"
 const TIMEOUT_MS = 8000
 
-const incidentIds = INCIDENTS.map((incident) => incident.id) as [IncidentTypeId, ...IncidentTypeId[]]
+const incidentIds = INCIDENTS.map((incident) => incident.id) as [
+  IncidentTypeId,
+  ...IncidentTypeId[],
+]
 
 /** What the model must return. Kept minimal; everything else is derived in code. */
 const ModelAnswerSchema = z.object({
   incidentType: z.enum([...incidentIds, "none"]),
   confidence: z.number().describe("How sure you are, from 0 to 1."),
-  supportingQuote: z.string().describe("The exact words from the transcript that support your answer, or an empty string."),
+  supportingQuote: z
+    .string()
+    .describe(
+      "The exact words from the transcript that support your answer, or an empty string."
+    ),
 })
 
 /** Built once from the config, so adding an incident updates the prompt automatically. */
@@ -53,15 +60,24 @@ Rules:
 
 let client: Anthropic | null = null
 function getClient(): Anthropic {
-  client ??= new Anthropic({ apiKey: requireEnv("ANTHROPIC_API_KEY"), timeout: TIMEOUT_MS, maxRetries: 1 })
+  client ??= new Anthropic({
+    apiKey: requireEnv("ANTHROPIC_API_KEY"),
+    timeout: TIMEOUT_MS,
+    maxRetries: 1,
+  })
   return client
 }
 
 /** `anthropic` can be injected for tests; the app uses the shared client. */
-export function createAnthropicClassifier(anthropic?: Anthropic): IncidentClassifier {
+export function createAnthropicClassifier(
+  anthropic?: Anthropic
+): IncidentClassifier {
   return {
     async classify({ transcript, trigger }) {
-      const triggerDescription = trigger.source === "sound" ? `the sound "${trigger.label}"` : `the phrase "${trigger.phrase}"`
+      const triggerDescription =
+        trigger.source === "sound"
+          ? `the sound "${trigger.label}"`
+          : `the phrase "${trigger.phrase}"`
       const response = await (anthropic ?? getClient()).messages.parse({
         model: MODEL,
         max_tokens: 400,
@@ -76,8 +92,14 @@ export function createAnthropicClassifier(anthropic?: Anthropic): IncidentClassi
       })
 
       const answer = response.parsed_output
-      if (!answer) throw new Error(`No structured answer from the model (stop_reason: ${response.stop_reason})`)
-      console.info("classifier usage", { input: response.usage.input_tokens, output: response.usage.output_tokens })
+      if (!answer)
+        throw new Error(
+          `No structured answer from the model (stop_reason: ${response.stop_reason})`
+        )
+      console.info("classifier usage", {
+        input: response.usage.input_tokens,
+        output: response.usage.output_tokens,
+      })
 
       return {
         incidentType: answer.incidentType,

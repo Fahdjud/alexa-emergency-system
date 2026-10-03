@@ -11,7 +11,11 @@
  * Response: { transcript, classification, isIncident }
  */
 import { isIncident } from "@/lib/safety/ai-check"
-import { LanguageSchema, TriggerMatchSchema, type AiCheckResponse } from "@/lib/safety/schemas"
+import {
+  LanguageSchema,
+  TriggerMatchSchema,
+  type AiCheckResponse,
+} from "@/lib/safety/schemas"
 import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { getIncidentClassifier } from "@/lib/server/providers/incident-classifier"
 import { getSpeechToText } from "@/lib/server/providers/speech-to-text"
@@ -30,9 +34,13 @@ export async function POST(request: Request) {
   const trigger = TriggerMatchSchema.safeParse(parseJson(form?.get("trigger")))
   const language = LanguageSchema.safeParse(form?.get("language"))
   if (!(audio instanceof Blob) || !trigger.success || !language.success) {
-    return Response.json({ error: "Expected audio, trigger and language." }, { status: 400 })
+    return Response.json(
+      { error: "Expected audio, trigger and language." },
+      { status: 400 }
+    )
   }
-  if (audio.size > MAX_AUDIO_BYTES) return Response.json({ error: "Audio snippet too large." }, { status: 413 })
+  if (audio.size > MAX_AUDIO_BYTES)
+    return Response.json({ error: "Audio snippet too large." }, { status: 413 })
 
   // Transcription failure is not fatal: the classifier still sees the trigger.
   const transcript = await getSpeechToText()
@@ -42,8 +50,16 @@ export async function POST(request: Request) {
       return ""
     })
 
-  const classification = await getIncidentClassifier().classify({ transcript, trigger: trigger.data, language: language.data })
-  const body: AiCheckResponse = { transcript, classification, isIncident: isIncident(classification) }
+  const classification = await getIncidentClassifier().classify({
+    transcript,
+    trigger: trigger.data,
+    language: language.data,
+  })
+  const body: AiCheckResponse = {
+    transcript,
+    classification,
+    isIncident: isIncident(classification),
+  }
   return Response.json(body, { headers: { "Cache-Control": "no-store" } })
 }
 

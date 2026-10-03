@@ -12,20 +12,32 @@ import { z } from "zod"
 import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { getStore, type ContactRecord } from "@/lib/server/providers/store"
 
-const NewContactSchema = z.object({ name: z.string().trim().min(1).max(60), priority: z.number().int().min(1).max(20) })
+const NewContactSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  priority: z.number().int().min(1).max(20),
+})
 
 export async function GET(request: Request) {
   const rejection = rejectUnlessDevice(request)
   if (rejection) return rejection
   const contacts = await (await getStore()).listContacts()
-  return Response.json({ contacts: contacts.map(publicView) }, { headers: { "Cache-Control": "no-store" } })
+  return Response.json(
+    { contacts: contacts.map(publicView) },
+    { headers: { "Cache-Control": "no-store" } }
+  )
 }
 
 export async function POST(request: Request) {
   const rejection = rejectUnlessDevice(request)
   if (rejection) return rejection
-  const body = NewContactSchema.safeParse(await request.json().catch(() => null))
-  if (!body.success) return Response.json({ error: "Expected { name, priority }." }, { status: 400 })
+  const body = NewContactSchema.safeParse(
+    await request.json().catch(() => null)
+  )
+  if (!body.success)
+    return Response.json(
+      { error: "Expected { name, priority }." },
+      { status: 400 }
+    )
   const contact = await (await getStore()).addContact(body.data)
   return Response.json({ contact: publicView(contact) }, { status: 201 })
 }

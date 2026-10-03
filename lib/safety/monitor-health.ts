@@ -20,11 +20,17 @@ export type MonitorStatus = {
   offlineAlertSentAtMs: number | null
 }
 
-export type MonitorHealth = "running" | "paused" | "offline-alert-due" | "offline-alerted"
+export type MonitorHealth =
+  "running" | "paused" | "offline-alert-due" | "offline-alerted"
 
-export function monitorHealth(status: MonitorStatus | null, nowMs: number): MonitorHealth | null {
+export function monitorHealth(
+  status: MonitorStatus | null,
+  nowMs: number
+): MonitorHealth | null {
   if (!status) return null // never set up: nothing to report
   if (!status.listening) return "paused"
   if (nowMs - status.lastSeenMs < OFFLINE_AFTER_MS) return "running"
-  return status.offlineAlertSentAtMs === null ? "offline-alert-due" : "offline-alerted"
+  return status.offlineAlertSentAtMs === null
+    ? "offline-alert-due"
+    : "offline-alerted"
 }

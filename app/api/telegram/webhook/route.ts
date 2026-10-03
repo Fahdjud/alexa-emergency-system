@@ -18,18 +18,25 @@ type TelegramUpdate = { message?: { chat?: { id?: number }; text?: string } }
 
 export async function POST(request: Request) {
   const presented = request.headers.get("x-telegram-bot-api-secret-token") ?? ""
-  if (!secretsMatch(presented, requireEnv("TELEGRAM_WEBHOOK_SECRET"))) return new Response(null, { status: 401 })
+  if (!secretsMatch(presented, requireEnv("TELEGRAM_WEBHOOK_SECRET")))
+    return new Response(null, { status: 401 })
 
   const update = (await request.json().catch(() => ({}))) as TelegramUpdate
   const chatId = update.message?.chat?.id
-  const inviteCode = update.message?.text?.match(/^\/start\s+([A-Za-z0-9_-]{1,64})$/)?.[1]
+  const inviteCode = update.message?.text?.match(
+    /^\/start\s+([A-Za-z0-9_-]{1,64})$/
+  )?.[1]
   if (chatId === undefined) return new Response(null, { status: 200 })
 
-  const contact = inviteCode ? await (await getStore()).linkTelegramChat(inviteCode, String(chatId)) : null
+  const contact = inviteCode
+    ? await (await getStore()).linkTelegramChat(inviteCode, String(chatId))
+    : null
   const reply = contact
     ? welcomeText(contact.name)
     : "To become an emergency contact, open the invite link you were sent. / افتح رابط الدعوة الذي وصلك."
-  await sendTelegramText(String(chatId), reply).catch((error) => console.error("Telegram reply failed", error))
+  await sendTelegramText(String(chatId), reply).catch((error) =>
+    console.error("Telegram reply failed", error)
+  )
 
   // Always 200, otherwise Telegram keeps retrying the same update.
   return new Response(null, { status: 200 })

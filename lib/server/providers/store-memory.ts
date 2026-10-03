@@ -29,13 +29,21 @@ export function createMemoryStore(): IncidentStore {
     },
 
     async addContact({ name, priority }) {
-      const contact: ContactRecord = { id: randomUUID(), name, priority, telegramChatId: null, inviteCode: newInviteCode() }
+      const contact: ContactRecord = {
+        id: randomUUID(),
+        name,
+        priority,
+        telegramChatId: null,
+        inviteCode: newInviteCode(),
+      }
       contacts.set(contact.id, contact)
       return contact
     },
 
     async linkTelegramChat(inviteCode, chatId) {
-      const contact = [...contacts.values()].find((entry) => entry.inviteCode === inviteCode)
+      const contact = [...contacts.values()].find(
+        (entry) => entry.inviteCode === inviteCode
+      )
       if (!contact) return null
       const linked = { ...contact, telegramChatId: chatId }
       contacts.set(contact.id, linked)
@@ -66,14 +74,17 @@ export function createMemoryStore(): IncidentStore {
     async updateIncidentIf(id, when, patch) {
       const incident = incidents.get(id)
       if (!incident || !when.status.includes(incident.status)) return null
-      if (when.stepsSent !== undefined && incident.stepsSent !== when.stepsSent) return null
+      if (when.stepsSent !== undefined && incident.stepsSent !== when.stepsSent)
+        return null
       const updated = { ...incident, ...patch }
       incidents.set(id, updated)
       return updated
     },
 
     async listIncidentsByStatus(statuses) {
-      return [...incidents.values()].filter((incident) => statuses.includes(incident.status))
+      return [...incidents.values()].filter((incident) =>
+        statuses.includes(incident.status)
+      )
     },
 
     async saveSnippet(incidentId, wav) {
@@ -99,7 +110,13 @@ export function createMemoryStore(): IncidentStore {
       let deletedIncidents = 0
       for (const incident of [...incidents.values()]) {
         const escalated = incident.escalationStartedAtMs !== null
-        if (incident.snippetPath && snippetExpiresAtMs({ createdAtMs: incident.createdAtMs, escalated }) <= nowMs) {
+        if (
+          incident.snippetPath &&
+          snippetExpiresAtMs({
+            createdAtMs: incident.createdAtMs,
+            escalated,
+          }) <= nowMs
+        ) {
           snippets.delete(incident.snippetPath)
           incidents.set(incident.id, { ...incident, snippetPath: null })
           deletedSnippets++
@@ -115,5 +132,7 @@ export function createMemoryStore(): IncidentStore {
 }
 
 /** One shared instance per server process; kept on globalThis so dev reloads do not wipe it. */
-const holder = globalThis as typeof globalThis & { safetyMemoryStore?: IncidentStore }
+const holder = globalThis as typeof globalThis & {
+  safetyMemoryStore?: IncidentStore
+}
 export const memoryStore = (holder.safetyMemoryStore ??= createMemoryStore())

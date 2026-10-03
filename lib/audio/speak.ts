@@ -12,12 +12,16 @@ const MAX_WAIT_PER_CHARACTER_MS = 120
 
 /** Resolves when speaking ends (or fails), so the caller can listen for the answer straight after. */
 export function speak(text: string, languageTag: string): Promise<void> {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return Promise.resolve()
+  if (typeof window === "undefined" || !("speechSynthesis" in window))
+    return Promise.resolve()
 
   return new Promise((resolve) => {
     // Chrome sometimes never fires "end". Never wait longer than the sentence could take,
     // or recognition would stay paused and the answer would not be heard.
-    const fallback = setTimeout(resolve, MAX_WAIT_BASE_MS + text.length * MAX_WAIT_PER_CHARACTER_MS)
+    const fallback = setTimeout(
+      resolve,
+      MAX_WAIT_BASE_MS + text.length * MAX_WAIT_PER_CHARACTER_MS
+    )
     const done = () => {
       clearTimeout(fallback)
       resolve()
@@ -35,11 +39,15 @@ export function speak(text: string, languageTag: string): Promise<void> {
 }
 
 export function stopSpeaking(): void {
-  if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel()
+  if (typeof window !== "undefined" && "speechSynthesis" in window)
+    window.speechSynthesis.cancel()
 }
 
 function pickVoice(languageTag: string): SpeechSynthesisVoice | undefined {
   const voices = window.speechSynthesis.getVoices()
   const language = languageTag.split("-")[0]
-  return voices.find((voice) => voice.lang === languageTag) ?? voices.find((voice) => voice.lang.startsWith(language))
+  return (
+    voices.find((voice) => voice.lang === languageTag) ??
+    voices.find((voice) => voice.lang.startsWith(language))
+  )
 }

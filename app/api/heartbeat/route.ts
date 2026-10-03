@@ -18,8 +18,12 @@ export async function POST(request: Request) {
   const rejection = rejectUnlessDevice(request)
   if (rejection) return rejection
   const body = BodySchema.safeParse(await request.json().catch(() => null))
-  if (!body.success) return Response.json({ error: "Expected { listening }." }, { status: 400 })
+  if (!body.success)
+    return Response.json({ error: "Expected { listening }." }, { status: 400 })
 
   await recordHeartbeat(await escalationDeps(), body.data.listening)
-  return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } })
+  return Response.json(
+    { ok: true },
+    { headers: { "Cache-Control": "no-store" } }
+  )
 }

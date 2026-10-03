@@ -18,13 +18,20 @@ export function createTelegramNotifier(): Notifier {
     canReach: (contact) => contact.telegramChatId !== null,
 
     async send(contact, message) {
-      if (!contact.telegramChatId) throw new Error(`${contact.name} has not connected Telegram yet`)
+      if (!contact.telegramChatId)
+        throw new Error(`${contact.name} has not connected Telegram yet`)
       const chatId = contact.telegramChatId
 
       await callTelegram("sendMessage", {
         chat_id: chatId,
         text: message.text,
-        reply_markup: message.action ? { inline_keyboard: [[{ text: message.action.label, url: message.action.url }]] } : undefined,
+        reply_markup: message.action
+          ? {
+              inline_keyboard: [
+                [{ text: message.action.label, url: message.action.url }],
+              ],
+            }
+          : undefined,
       })
 
       if (message.audio) {
@@ -39,20 +46,30 @@ export function createTelegramNotifier(): Notifier {
 }
 
 /** Sends a plain message to any chat; used by the webhook to greet new contacts. */
-export async function sendTelegramText(chatId: string, text: string): Promise<void> {
+export async function sendTelegramText(
+  chatId: string,
+  text: string
+): Promise<void> {
   await callTelegram("sendMessage", { chat_id: chatId, text })
 }
 
-async function callTelegram(method: string, body: object | FormData): Promise<void> {
+async function callTelegram(
+  method: string,
+  body: object | FormData
+): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN is not set")
   const isForm = body instanceof FormData
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: "POST",
-    headers: isForm ? undefined : { "Content-Type": "application/json" },
-    body: isForm ? body : JSON.stringify(body),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  })
+  const response = await fetch(
+    `https://api.telegram.org/bot${token}/${method}`,
+    {
+      method: "POST",
+      headers: isForm ? undefined : { "Content-Type": "application/json" },
+      body: isForm ? body : JSON.stringify(body),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    }
+  )
   // The URL contains the token, so never include it in the error.
-  if (!response.ok) throw new Error(`Telegram ${method} failed with status ${response.status}`)
+  if (!response.ok)
+    throw new Error(`Telegram ${method} failed with status ${response.status}`)
 }

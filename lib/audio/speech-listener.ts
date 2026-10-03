@@ -33,7 +33,11 @@ type Options = {
 /** Wait before restarting after an error, so a network outage does not cause a tight loop. */
 const RESTART_DELAY_MS = 1000
 
-export function createWebSpeechListener({ languageTag, onTranscript, onStatus }: Options): SpeechListener {
+export function createWebSpeechListener({
+  languageTag,
+  onTranscript,
+  onStatus,
+}: Options): SpeechListener {
   const MaybeRecognition = getRecognitionConstructor()
   if (!MaybeRecognition) {
     onStatus("unsupported")
@@ -60,7 +64,10 @@ export function createWebSpeechListener({ languageTag, onTranscript, onStatus }:
       }
     }
     instance.onerror = (event) => {
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      if (
+        event.error === "not-allowed" ||
+        event.error === "service-not-allowed"
+      ) {
         wanted = false
         onStatus("blocked")
       }
@@ -123,7 +130,8 @@ type RecognitionInstance = {
   abort(): void
 }
 
-function getRecognitionConstructor(): (new () => RecognitionInstance) | undefined {
+function getRecognitionConstructor():
+  (new () => RecognitionInstance) | undefined {
   const speechWindow = window as Window & {
     SpeechRecognition?: new () => RecognitionInstance
     webkitSpeechRecognition?: new () => RecognitionInstance

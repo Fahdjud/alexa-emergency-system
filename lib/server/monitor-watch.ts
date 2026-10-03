@@ -14,9 +14,16 @@ import { monitorHealth } from "@/lib/safety/monitor-health"
 import { monitorBackText, monitorOfflineText } from "./alert-message"
 import type { EscalationDeps } from "./escalation-runner"
 
-export async function recordHeartbeat(deps: EscalationDeps, listening: boolean): Promise<void> {
+export async function recordHeartbeat(
+  deps: EscalationDeps,
+  listening: boolean
+): Promise<void> {
   const previous = await deps.store.getMonitorStatus()
-  await deps.store.saveMonitorStatus({ lastSeenMs: deps.nowMs, listening, offlineAlertSentAtMs: null })
+  await deps.store.saveMonitorStatus({
+    lastSeenMs: deps.nowMs,
+    listening,
+    offlineAlertSentAtMs: null,
+  })
   const wasReportedOffline = previous?.offlineAlertSentAtMs != null
   if (wasReportedOffline && listening) {
     await tellFirstContact(deps, monitorBackText())
@@ -26,13 +33,24 @@ export async function recordHeartbeat(deps: EscalationDeps, listening: boolean):
 /** Called on every scheduler tick. Sends at most one "offline" message per outage. */
 export async function checkMonitorHealth(deps: EscalationDeps): Promise<void> {
   const status = await deps.store.getMonitorStatus()
-  if (!status || monitorHealth(status, deps.nowMs) !== "offline-alert-due") return
-  await deps.store.saveMonitorStatus({ ...status, offlineAlertSentAtMs: deps.nowMs })
+  if (!status || monitorHealth(status, deps.nowMs) !== "offline-alert-due")
+    return
+  await deps.store.saveMonitorStatus({
+    ...status,
+    offlineAlertSentAtMs: deps.nowMs,
+  })
   await tellFirstContact(deps, monitorOfflineText(status.lastSeenMs))
 }
 
-async function tellFirstContact(deps: EscalationDeps, text: string): Promise<void> {
-  const first = (await deps.store.listContacts()).find((contact) => deps.notifier.canReach(contact))
+async function tellFirstContact(
+  deps: EscalationDeps,
+  text: string
+): Promise<void> {
+  const first = (await deps.store.listContacts()).find((contact) =>
+    deps.notifier.canReach(contact)
+  )
   if (!first) return
-  await deps.notifier.send(first, { text }).catch((error) => console.error(`Message to ${first.name} failed`, error))
+  await deps.notifier
+    .send(first, { text })
+    .catch((error) => console.error(`Message to ${first.name} failed`, error))
 }

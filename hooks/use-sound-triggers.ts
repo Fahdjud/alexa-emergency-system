@@ -11,10 +11,18 @@ import { useEffect, useRef, useState } from "react"
 
 import type { ChunkListener } from "@/hooks/use-audio-capture"
 import { CLASSIFY_EVERY_MS } from "@/lib/audio/audio-settings"
-import { createYamnetClassifier, topSounds, type SoundClassifier } from "@/lib/audio/sound-classifier"
+import {
+  createYamnetClassifier,
+  topSounds,
+  type SoundClassifier,
+} from "@/lib/audio/sound-classifier"
 import { concatSamples } from "@/lib/audio/snippet"
 import { addSoundFrame, matchSound } from "@/lib/safety/match-trigger"
-import type { IncidentTypeId, SoundFrame, TriggerMatch } from "@/lib/safety/types"
+import type {
+  IncidentTypeId,
+  SoundFrame,
+  TriggerMatch,
+} from "@/lib/safety/types"
 
 /** The same incident is not reported again within this time (an alarm sounds for minutes). */
 const SAME_INCIDENT_COOLDOWN_MS = 10_000
@@ -84,7 +92,11 @@ export function useSoundTriggers({ listening, onChunk, onTrigger }: Options) {
       setHearing(topSounds(frame))
 
       for (const match of matchSound(frames)) {
-        if (now - (lastReported.get(match.incidentId) ?? 0) < SAME_INCIDENT_COOLDOWN_MS) continue
+        if (
+          now - (lastReported.get(match.incidentId) ?? 0) <
+          SAME_INCIDENT_COOLDOWN_MS
+        )
+          continue
         lastReported.set(match.incidentId, now)
         onTriggerRef.current(match)
       }

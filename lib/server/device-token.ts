@@ -13,7 +13,10 @@ import { createHash, timingSafeEqual } from "node:crypto"
 
 import { getMonitorDeviceToken } from "./env"
 
-export function hasValidDeviceToken(authorizationHeader: string | null, expectedToken: string): boolean {
+export function hasValidDeviceToken(
+  authorizationHeader: string | null,
+  expectedToken: string
+): boolean {
   const presented = bearerToken(authorizationHeader)
   return presented !== "" && secretsMatch(presented, expectedToken)
 }
@@ -36,12 +39,20 @@ export function rejectUnlessDevice(request: Request): Response | null {
   const expectedToken = getMonitorDeviceToken()
   if (!expectedToken) {
     return Response.json(
-      { error: "MONITOR_DEVICE_TOKEN is not set on this deployment. Add it and redeploy." },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
+      {
+        error:
+          "MONITOR_DEVICE_TOKEN is not set on this deployment. Add it and redeploy.",
+      },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
     )
   }
-  if (!hasValidDeviceToken(request.headers.get("authorization"), expectedToken)) {
-    return Response.json({ error: "Missing or wrong device token." }, { status: 401, headers: { "Cache-Control": "no-store" } })
+  if (
+    !hasValidDeviceToken(request.headers.get("authorization"), expectedToken)
+  ) {
+    return Response.json(
+      { error: "Missing or wrong device token." },
+      { status: 401, headers: { "Cache-Control": "no-store" } }
+    )
   }
   return null
 }

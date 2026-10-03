@@ -14,11 +14,16 @@ import { acknowledgeIncident } from "@/lib/server/escalation-runner"
 export async function POST(request: Request) {
   const form = await request.formData().catch(() => null)
   const token = form?.get("token")
-  if (typeof token !== "string") return Response.json({ error: "Missing token." }, { status: 400 })
+  if (typeof token !== "string")
+    return Response.json({ error: "Missing token." }, { status: 400 })
 
   const deps = await escalationDeps()
   const claims = verifyAckToken(token, deps.ackSecret, deps.nowMs)
-  if (!claims) return Response.json({ error: "This link is invalid or has expired." }, { status: 400 })
+  if (!claims)
+    return Response.json(
+      { error: "This link is invalid or has expired." },
+      { status: 400 }
+    )
 
   await acknowledgeIncident(deps, claims)
   return Response.redirect(new URL(`/ack/${token}?done=1`, request.url), 303)

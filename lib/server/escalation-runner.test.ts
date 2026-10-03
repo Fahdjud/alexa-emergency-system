@@ -2,7 +2,12 @@
 import { describe, expect, it } from "vitest"
 
 import { verifyAckToken } from "./ack-token"
-import { acknowledgeIncident, answerIncident, runEscalationTick, type EscalationDeps } from "./escalation-runner"
+import {
+  acknowledgeIncident,
+  answerIncident,
+  runEscalationTick,
+  type EscalationDeps,
+} from "./escalation-runner"
 import type { Notifier, OutgoingMessage } from "./providers/notifier"
 import type { IncidentStore, NewIncident } from "./providers/store"
 import { createMemoryStore } from "./providers/store-memory"
@@ -22,7 +27,9 @@ function recordingNotifier(unreachable: string[] = []) {
   return { notifier, sent }
 }
 
-async function setup(options: { unreachable?: string[]; incident?: Partial<NewIncident> } = {}) {
+async function setup(
+  options: { unreachable?: string[]; incident?: Partial<NewIncident> } = {}
+) {
   const store: IncidentStore = createMemoryStore()
   const daughter = await store.addContact({ name: "Daughter", priority: 1 })
   const son = await store.addContact({ name: "Son", priority: 2 })
@@ -37,7 +44,13 @@ async function setup(options: { unreachable?: string[]; incident?: Partial<NewIn
     ...options.incident,
   })
   const { notifier, sent } = recordingNotifier(options.unreachable)
-  const deps = (nowMs: number): EscalationDeps => ({ store, notifier, nowMs, ackSecret: SECRET, baseUrl: "https://example.test" })
+  const deps = (nowMs: number): EscalationDeps => ({
+    store,
+    notifier,
+    nowMs,
+    ackSecret: SECRET,
+    baseUrl: "https://example.test",
+  })
   return { store, incident, daughter, son, sent, deps }
 }
 
@@ -47,7 +60,11 @@ describe("escalation", () => {
   it("alerts contacts one by one until someone acknowledges", async () => {
     const { store, incident, son, sent, deps } = await setup()
     await store.saveSnippet(incident.id, new Blob(["wav"]))
-    await store.updateIncidentIf(incident.id, { status: ["confirming"] }, { snippetPath: `${incident.id}.wav` })
+    await store.updateIncidentIf(
+      incident.id,
+      { status: ["confirming"] },
+      { snippetPath: `${incident.id}.wav` }
+    )
 
     await answerIncident(deps(START), incident.id, "help")
     expect(sent.map((s) => s.to)).toEqual(["Daughter"])
@@ -63,8 +80,14 @@ describe("escalation", () => {
     const sonToken = tokenFrom(sent[1].message.action!.url)
     const claims = verifyAckToken(sonToken, SECRET, START + 4 * MINUTE)!
     expect(claims.contactId).toBe(son.id)
-    const acknowledged = await acknowledgeIncident(deps(START + 4 * MINUTE), claims)
-    expect(acknowledged).toMatchObject({ status: "acknowledged", acknowledgedByContactId: son.id })
+    const acknowledged = await acknowledgeIncident(
+      deps(START + 4 * MINUTE),
+      claims
+    )
+    expect(acknowledged).toMatchObject({
+      status: "acknowledged",
+      acknowledgedByContactId: son.id,
+    })
     expect(sent.at(-1)).toMatchObject({ to: "Daughter" })
     expect(sent.at(-1)!.message.text).toContain("Son is handling")
 
@@ -76,7 +99,10 @@ describe("escalation", () => {
   it("never sends the same step twice when ticks overlap", async () => {
     const { incident, sent, deps } = await setup()
     await answerIncident(deps(START), incident.id, "help")
-    await Promise.all([runEscalationTick(deps(START + 3 * MINUTE)), runEscalationTick(deps(START + 3 * MINUTE))])
+    await Promise.all([
+      runEscalationTick(deps(START + 3 * MINUTE)),
+      runEscalationTick(deps(START + 3 * MINUTE)),
+    ])
     expect(sent.map((s) => s.to)).toEqual(["Daughter", "Son"])
   })
 
@@ -85,16 +111,25 @@ describe("escalation", () => {
     await runEscalationTick(deps(START + 30_000))
     expect(sent).toHaveLength(0) // deadline not passed
     await runEscalationTick(deps(START + 46_000))
-    expect((await store.getIncident(incident.id))?.escalationReason).toBe("no-answer")
+    expect((await store.getIncident(incident.id))?.escalationReason).toBe(
+      "no-answer"
+    )
     expect(sent[0].message.text).toContain("did not answer")
   })
 
   it("gives up after the last round and tells everyone", async () => {
     const { store, incident, sent, deps } = await setup()
     await answerIncident(deps(START), incident.id, "help")
-    for (let minute = 1; minute <= 25; minute++) await runEscalationTick(deps(START + minute * MINUTE))
-    expect((await store.getIncident(incident.id))?.status).toBe("unacknowledged")
-    expect(sent.filter((s) => s.message.text.includes("Nobody has acknowledged")).map((s) => s.to)).toEqual(["Daughter", "Son"])
+    for (let minute = 1; minute <= 25; minute++)
+      await runEscalationTick(deps(START + minute * MINUTE))
+    expect((await store.getIncident(incident.id))?.status).toBe(
+      "unacknowledged"
+    )
+    expect(
+      sent
+        .filter((s) => s.message.text.includes("Nobody has acknowledged"))
+        .map((s) => s.to)
+    ).toEqual(["Daughter", "Son"])
   })
 
   it("skips contacts who cannot be reached, and gives up if nobody can", async () => {
@@ -105,23 +140,35 @@ describe("escalation", () => {
     const nobody = await setup({ unreachable: ["Daughter", "Son"] })
     await answerIncident(nobody.deps(START), nobody.incident.id, "help")
     await runEscalationTick(nobody.deps(START))
-    expect((await nobody.store.getIncident(nobody.incident.id))?.status).toBe("unacknowledged")
+    expect((await nobody.store.getIncident(nobody.incident.id))?.status).toBe(
+      "unacknowledged"
+    )
   })
 
   it("cancels on 'fine', with a note to contact 1 only for incidents that ask for one", async () => {
     const fall = await setup()
     await answerIncident(fall.deps(START), fall.incident.id, "fine")
-    expect((await fall.store.getIncident(fall.incident.id))?.status).toBe("cancelled")
+    expect((await fall.store.getIncident(fall.incident.id))?.status).toBe(
+      "cancelled"
+    )
     expect(fall.sent).toHaveLength(0)
 
-    const alarm = await setup({ incident: { incidentType: "smoke_co_alarm", severity: "critical", triggerDescription: "Smoke detector 88%" } })
+    const alarm = await setup({
+      incident: {
+        incidentType: "smoke_co_alarm",
+        severity: "critical",
+        triggerDescription: "Smoke detector 88%",
+      },
+    })
     await answerIncident(alarm.deps(START), alarm.incident.id, "fine")
     expect(alarm.sent.map((s) => s.to)).toEqual(["Daughter"])
     expect(alarm.sent[0].message.text).toContain("They said they are fine")
   })
 
   it("alerts everyone at once for critical incidents", async () => {
-    const { incident, sent, deps } = await setup({ incident: { incidentType: "medical_distress", severity: "critical" } })
+    const { incident, sent, deps } = await setup({
+      incident: { incidentType: "medical_distress", severity: "critical" },
+    })
     await answerIncident(deps(START), incident.id, "no-answer")
     expect(sent.map((s) => s.to).sort()).toEqual(["Daughter", "Son"])
   })
@@ -139,4 +186,3 @@ describe("acknowledge tokens", () => {
     expect(verifyAckToken("garbage", SECRET, START)).toBeNull()
   })
 })
-

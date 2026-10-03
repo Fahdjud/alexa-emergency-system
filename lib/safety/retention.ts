@@ -23,8 +23,13 @@ export const RETENTION_DAYS = {
   incidentRecord: 90,
 } as const
 
-export function snippetExpiresAtMs(incident: { createdAtMs: number; escalated: boolean }): number {
-  const days = incident.escalated ? RETENTION_DAYS.snippetEscalated : RETENTION_DAYS.snippetNotEscalated
+export function snippetExpiresAtMs(incident: {
+  createdAtMs: number
+  escalated: boolean
+}): number {
+  const days = incident.escalated
+    ? RETENTION_DAYS.snippetEscalated
+    : RETENTION_DAYS.snippetNotEscalated
   return incident.createdAtMs + days * DAY
 }
 

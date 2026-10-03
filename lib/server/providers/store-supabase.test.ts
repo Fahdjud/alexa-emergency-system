@@ -5,8 +5,13 @@ import { describe, expect, it, vi } from "vitest"
 import { createSupabaseStore } from "./store-supabase"
 
 function capturingClient(responseRows: object[]) {
-  const fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async () => Response.json(responseRows))
-  const client = createClient("https://example.supabase.co", "test-key", { auth: { persistSession: false }, global: { fetch } })
+  const fetch = vi.fn<
+    (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+  >(async () => Response.json(responseRows))
+  const client = createClient("https://example.supabase.co", "test-key", {
+    auth: { persistSession: false },
+    global: { fetch },
+  })
   return { store: createSupabaseStore(client), fetch }
 }
 
@@ -32,7 +37,11 @@ const row = {
 describe("supabase store", () => {
   it("updates an incident only if its status and step still match", async () => {
     const { store, fetch } = capturingClient([row])
-    const updated = await store.updateIncidentIf("inc-1", { status: ["escalating"], stepsSent: 1 }, { stepsSent: 2 })
+    const updated = await store.updateIncidentIf(
+      "inc-1",
+      { status: ["escalating"], stepsSent: 1 },
+      { stepsSent: 2 }
+    )
 
     const [input, init] = fetch.mock.calls[0]
     const url = new URL(String(input))
@@ -42,16 +51,33 @@ describe("supabase store", () => {
     expect(url.searchParams.get("status")).toBe("in.(escalating)")
     expect(url.searchParams.get("steps_sent")).toBe("eq.1")
     expect(JSON.parse(String(init?.body))).toEqual({ steps_sent: 2 })
-    expect(updated).toMatchObject({ id: "inc-1", stepsSent: 2, createdAtMs: 1000, escalationStartedAtMs: 1500 })
+    expect(updated).toMatchObject({
+      id: "inc-1",
+      stepsSent: 2,
+      createdAtMs: 1000,
+      escalationStartedAtMs: 1500,
+    })
   })
 
   it("returns null when no row matched (another tick won)", async () => {
     const { store } = capturingClient([])
-    expect(await store.updateIncidentIf("inc-1", { status: ["confirming"] }, { status: "cancelled" })).toBeNull()
+    expect(
+      await store.updateIncidentIf(
+        "inc-1",
+        { status: ["confirming"] },
+        { status: "cancelled" }
+      )
+    ).toBeNull()
   })
 
   it("refuses to write fields that have no column mapping", async () => {
     const { store } = capturingClient([row])
-    await expect(store.updateIncidentIf("inc-1", { status: ["escalating"] }, { severity: "critical" })).rejects.toThrow("not supported")
+    await expect(
+      store.updateIncidentIf(
+        "inc-1",
+        { status: ["escalating"] },
+        { severity: "critical" }
+      )
+    ).rejects.toThrow("not supported")
   })
 })

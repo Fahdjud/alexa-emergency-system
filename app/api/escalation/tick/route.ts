@@ -18,7 +18,12 @@ import { checkMonitorHealth } from "@/lib/server/monitor-watch"
 export const maxDuration = 30
 
 async function tick(request: Request) {
-  if (!secretsMatch(bearerToken(request.headers.get("authorization")), requireEnv("CRON_SECRET"))) {
+  if (
+    !secretsMatch(
+      bearerToken(request.headers.get("authorization")),
+      requireEnv("CRON_SECRET")
+    )
+  ) {
     return Response.json({ error: "Unauthorized." }, { status: 401 })
   }
 
@@ -26,7 +31,10 @@ async function tick(request: Request) {
   const escalation = await runEscalationTick(deps)
   await checkMonitorHealth(deps)
   const deleted = await deps.store.deleteExpired(deps.nowMs)
-  return Response.json({ ...escalation, deleted }, { headers: { "Cache-Control": "no-store" } })
+  return Response.json(
+    { ...escalation, deleted },
+    { headers: { "Cache-Control": "no-store" } }
+  )
 }
 
 export const GET = tick

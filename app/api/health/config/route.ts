@@ -13,5 +13,7 @@ import { getEnvReport } from "@/lib/server/env"
 export async function GET(request: Request) {
   const rejection = rejectUnlessDevice(request)
   if (rejection) return rejection
-  return Response.json(getEnvReport(), { headers: { "Cache-Control": "no-store" } })
+  return Response.json(getEnvReport(), {
+    headers: { "Cache-Control": "no-store" },
+  })
 }

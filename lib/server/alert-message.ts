@@ -12,12 +12,15 @@ import { EMERGENCY_NUMBERS } from "@/lib/safety/region"
 
 import type { IncidentRecord } from "./providers/store"
 
-export function alertText(incident: IncidentRecord, { reminder }: { reminder: boolean }): string {
+export function alertText(
+  incident: IncidentRecord,
+  { reminder }: { reminder: boolean }
+): string {
   const { label } = getIncident(incident.incidentType)
   const reason =
     incident.escalationReason === "asked-for-help"
       ? "They asked for help. / طلب المساعدة."
-      : "They did not answer \"Are you okay?\". / لم يرد على سؤال \"هل أنت بخير؟\"."
+      : 'They did not answer "Are you okay?". / لم يرد على سؤال "هل أنت بخير؟".'
   const quote = incident.classification?.supportingQuote
   const lines = [
     `${reminder ? "🔁 Reminder / تذكير\n" : ""}🚨 ${label} at home / تنبيه في المنزل`,
@@ -32,7 +35,10 @@ export function alertText(incident: IncidentRecord, { reminder }: { reminder: bo
   return lines.filter((line) => line !== null).join("\n")
 }
 
-export function acknowledgedText(incident: IncidentRecord, contactName: string): string {
+export function acknowledgedText(
+  incident: IncidentRecord,
+  contactName: string
+): string {
   return `✅ ${contactName} is handling the ${getIncident(incident.incidentType).label.toLowerCase()} alert. / ${contactName} يتولى الأمر.`
 }
 
@@ -50,7 +56,11 @@ export function welcomeText(contactName: string): string {
 }
 
 function formatRiyadhTime(ms: number): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" }).format(ms)
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Riyadh",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(ms)
 }
 
 export function monitorOfflineText(lastSeenMs: number): string {

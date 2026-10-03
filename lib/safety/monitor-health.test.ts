@@ -12,11 +12,18 @@ describe("monitorHealth", () => {
 
   it("asks for one offline alert after heartbeats stop", () => {
     expect(monitorHealth(seen, OFFLINE_AFTER_MS)).toBe("offline-alert-due")
-    expect(monitorHealth({ ...seen, offlineAlertSentAtMs: OFFLINE_AFTER_MS }, OFFLINE_AFTER_MS * 3)).toBe("offline-alerted")
+    expect(
+      monitorHealth(
+        { ...seen, offlineAlertSentAtMs: OFFLINE_AFTER_MS },
+        OFFLINE_AFTER_MS * 3
+      )
+    ).toBe("offline-alerted")
   })
 
   it("never alerts for a deliberate pause or a monitor that was never set up", () => {
-    expect(monitorHealth({ ...seen, listening: false }, OFFLINE_AFTER_MS * 10)).toBe("paused")
+    expect(
+      monitorHealth({ ...seen, listening: false }, OFFLINE_AFTER_MS * 10)
+    ).toBe("paused")
     expect(monitorHealth(null, 0)).toBeNull()
   })
 })

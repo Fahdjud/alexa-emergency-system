@@ -12,6 +12,10 @@ import type { Notifier } from "./notifier"
 export const consoleNotifier: Notifier = {
   canReach: () => true,
   async send(contact, message) {
-    console.info(`[alert to ${contact.name}]`, message.text, message.action ? `\n[${message.action.label}] ${message.action.url}` : "")
+    console.info(
+      `[alert to ${contact.name}]`,
+      message.text,
+      message.action ? `\n[${message.action.label}] ${message.action.url}` : ""
+    )
   },
 }

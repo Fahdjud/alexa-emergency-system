@@ -31,7 +31,10 @@ export const REPLY_HINT: Record<Language, string> = {
 }
 
 /** What the device says after the answer. */
-export const OUTCOME_LINES: Record<"cancelled" | "escalated", Record<Language, string>> = {
+export const OUTCOME_LINES: Record<
+  "cancelled" | "escalated",
+  Record<Language, string>
+> = {
   cancelled: {
     en: "Okay, I'm glad you're fine. I'll keep listening.",
     ar: "حسنًا، الحمد لله أنك بخير. سأبقى أستمع.",

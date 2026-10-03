@@ -57,7 +57,13 @@ export type IncidentRecord = {
 
 export type NewIncident = Pick<
   IncidentRecord,
-  "incidentType" | "severity" | "language" | "confirmDeadlineMs" | "triggerDescription" | "transcript" | "classification"
+  | "incidentType"
+  | "severity"
+  | "language"
+  | "confirmDeadlineMs"
+  | "triggerDescription"
+  | "transcript"
+  | "classification"
 >
 
 export type UpdateCondition = { status: IncidentStatus[]; stepsSent?: number }
@@ -66,7 +72,10 @@ export interface IncidentStore {
   listContacts(): Promise<ContactRecord[]>
   addContact(input: { name: string; priority: number }): Promise<ContactRecord>
   /** Links a Telegram chat to the contact with this invite code. Returns the contact, or null for an unknown code. */
-  linkTelegramChat(inviteCode: string, chatId: string): Promise<ContactRecord | null>
+  linkTelegramChat(
+    inviteCode: string,
+    chatId: string
+  ): Promise<ContactRecord | null>
 
   createIncident(input: NewIncident): Promise<IncidentRecord>
   getIncident(id: string): Promise<IncidentRecord | null>
@@ -74,7 +83,11 @@ export interface IncidentStore {
    * Applies the patch only if the incident still matches `when` (status, and stepsSent if given);
    * returns null otherwise. This is what stops two ticks escalating or alerting twice.
    */
-  updateIncidentIf(id: string, when: UpdateCondition, patch: Partial<IncidentRecord>): Promise<IncidentRecord | null>
+  updateIncidentIf(
+    id: string,
+    when: UpdateCondition,
+    patch: Partial<IncidentRecord>
+  ): Promise<IncidentRecord | null>
   listIncidentsByStatus(statuses: IncidentStatus[]): Promise<IncidentRecord[]>
 
   saveSnippet(incidentId: string, wav: Blob): Promise<string>

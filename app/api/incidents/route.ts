@@ -14,7 +14,11 @@
 import { z } from "zod"
 
 import { getIncident } from "@/lib/safety/incidents"
-import { ClassificationSchema, LanguageSchema, TriggerMatchSchema } from "@/lib/safety/schemas"
+import {
+  ClassificationSchema,
+  LanguageSchema,
+  TriggerMatchSchema,
+} from "@/lib/safety/schemas"
 import type { TriggerMatch } from "@/lib/safety/types"
 import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { getStore } from "@/lib/server/providers/store"
@@ -43,12 +47,15 @@ export async function POST(request: Request) {
     transcript: stringOrNull(form?.get("transcript")),
     classification: parseJson(form?.get("classification")),
   })
-  if (!fields.success) return Response.json({ error: "Invalid incident fields." }, { status: 400 })
+  if (!fields.success)
+    return Response.json({ error: "Invalid incident fields." }, { status: 400 })
 
   const audio = form?.get("audio")
-  if (audio instanceof Blob && audio.size > MAX_AUDIO_BYTES) return Response.json({ error: "Audio snippet too large." }, { status: 413 })
+  if (audio instanceof Blob && audio.size > MAX_AUDIO_BYTES)
+    return Response.json({ error: "Audio snippet too large." }, { status: 413 })
 
-  const { trigger, language, secondsLeft, transcript, classification } = fields.data
+  const { trigger, language, secondsLeft, transcript, classification } =
+    fields.data
   const store = await getStore()
   const incident = await store.createIncident({
     incidentType: trigger.incidentId,
@@ -61,14 +68,20 @@ export async function POST(request: Request) {
   })
   if (audio instanceof Blob && audio.size > 0) {
     const snippetPath = await store.saveSnippet(incident.id, audio)
-    await store.updateIncidentIf(incident.id, { status: ["confirming", "escalating"] }, { snippetPath })
+    await store.updateIncidentIf(
+      incident.id,
+      { status: ["confirming", "escalating"] },
+      { snippetPath }
+    )
   }
 
   return Response.json({ id: incident.id }, { status: 201 })
 }
 
 function describeTrigger(trigger: TriggerMatch): string {
-  return trigger.source === "sound" ? `${trigger.label} (${Math.round(trigger.score * 100)}%)` : `“${trigger.phrase}”`
+  return trigger.source === "sound"
+    ? `${trigger.label} (${Math.round(trigger.score * 100)}%)`
+    : `“${trigger.phrase}”`
 }
 
 function parseJson(value: FormDataEntryValue | null | undefined): unknown {
@@ -80,6 +93,8 @@ function parseJson(value: FormDataEntryValue | null | undefined): unknown {
   }
 }
 
-function stringOrNull(value: FormDataEntryValue | null | undefined): string | null {
+function stringOrNull(
+  value: FormDataEntryValue | null | undefined
+): string | null {
   return typeof value === "string" && value !== "" ? value : null
 }

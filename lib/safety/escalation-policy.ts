@@ -51,21 +51,33 @@ export type EscalationAction =
   | { type: "stop" }
   | { type: "give-up"; reason: "nobody-acknowledged" | "no-contacts" }
 
-export function buildEscalationPlan(severity: Severity, contacts: Contact[]): EscalationPlan {
-  const ordered = [...contacts].sort((a, b) => a.priority - b.priority).map((contact) => contact.id)
+export function buildEscalationPlan(
+  severity: Severity,
+  contacts: Contact[]
+): EscalationPlan {
+  const ordered = [...contacts]
+    .sort((a, b) => a.priority - b.priority)
+    .map((contact) => contact.id)
   const rule = ESCALATION_RULES[severity]
 
   const firstPass: EscalationStep[] =
     rule.mode === "all-at-once"
       ? [{ offsetMs: 0, contactIds: ordered }]
-      : ordered.map((id, index) => ({ offsetMs: index * rule.waitMs, contactIds: [id] }))
+      : ordered.map((id, index) => ({
+          offsetMs: index * rule.waitMs,
+          contactIds: [id],
+        }))
 
   const firstPassEndMs = firstPass.length * rule.waitMs
-  const repeatWaitMs = rule.mode === "all-at-once" ? rule.waitMs : EVERYONE_ROUNDS.waitMs
-  const everyoneRounds: EscalationStep[] = Array.from({ length: EVERYONE_ROUNDS.count }, (_, round) => ({
-    offsetMs: firstPassEndMs + round * repeatWaitMs,
-    contactIds: ordered,
-  }))
+  const repeatWaitMs =
+    rule.mode === "all-at-once" ? rule.waitMs : EVERYONE_ROUNDS.waitMs
+  const everyoneRounds: EscalationStep[] = Array.from(
+    { length: EVERYONE_ROUNDS.count },
+    (_, round) => ({
+      offsetMs: firstPassEndMs + round * repeatWaitMs,
+      contactIds: ordered,
+    })
+  )
 
   return {
     steps: [...firstPass, ...everyoneRounds],
@@ -83,21 +95,34 @@ export function nextEscalationAction(input: {
 }): EscalationAction {
   const { plan, startedAtMs, stepsSent, acknowledged, nowMs } = input
   if (acknowledged) return { type: "stop" }
-  if (plan.steps.length === 0 || plan.steps[0].contactIds.length === 0) return { type: "give-up", reason: "no-contacts" }
+  if (plan.steps.length === 0 || plan.steps[0].contactIds.length === 0)
+    return { type: "give-up", reason: "no-contacts" }
 
   const nextStep = plan.steps[stepsSent]
   if (nextStep) {
     const dueMs = startedAtMs + nextStep.offsetMs
     return nowMs >= dueMs
-      ? { type: "notify", stepIndex: stepsSent, contactIds: nextStep.contactIds }
+      ? {
+          type: "notify",
+          stepIndex: stepsSent,
+          contactIds: nextStep.contactIds,
+        }
       : { type: "wait", untilMs: dueMs }
   }
 
   const giveUpMs = startedAtMs + plan.giveUpAtMs
-  return nowMs >= giveUpMs ? { type: "give-up", reason: "nobody-acknowledged" } : { type: "wait", untilMs: giveUpMs }
+  return nowMs >= giveUpMs
+    ? { type: "give-up", reason: "nobody-acknowledged" }
+    : { type: "wait", untilMs: giveUpMs }
 }
 
 /** True when this step is the first time the contact is alerted; later steps are reminders. */
-export function isFirstAlertFor(plan: EscalationPlan, stepIndex: number, contactId: string): boolean {
-  return plan.steps.slice(0, stepIndex).every((step) => !step.contactIds.includes(contactId))
+export function isFirstAlertFor(
+  plan: EscalationPlan,
+  stepIndex: number,
+  contactId: string
+): boolean {
+  return plan.steps
+    .slice(0, stepIndex)
+    .every((step) => !step.contactIds.includes(contactId))
 }
