@@ -113,7 +113,7 @@ export function MonitorScreen() {
           />
         )}
 
-        {state.phase === "escalated" && (
+        {monitor.activeAlert && (
           <section
             className="grid gap-3 rounded-[12px] border-2 border-[#e86b5f] bg-[#2b1311] p-5 text-center"
             role="alert"
@@ -122,8 +122,8 @@ export function MonitorScreen() {
               Getting help
             </h2>
             <p className="m-0 text-sm text-[#f5b8b0]">
-              {getIncident(state.incident.incidentId).label}:{" "}
-              {state.reason === "no-answer"
+              {getIncident(monitor.activeAlert.incidentId).label}:{" "}
+              {monitor.activeAlert.reason === "no-answer"
                 ? "no answer in time."
                 : "help was requested."}{" "}
               {escalationProgress(
@@ -131,12 +131,16 @@ export function MonitorScreen() {
                 Boolean(monitor.deviceToken)
               )}
             </p>
+            <p className="m-0 text-xs text-[#f5b8b0]">
+              The monitor keeps listening. Contacts keep being alerted until one
+              of them taps &quot;I&apos;m handling it&quot;.
+            </p>
             <Button
               className={outlineButtonClass}
               variant="outline"
-              onClick={monitor.resume}
+              onClick={monitor.dismissAlert}
             >
-              Back to listening
+              Close this card
             </Button>
           </section>
         )}
@@ -178,6 +182,12 @@ export function MonitorScreen() {
                   ({ label, score }) => `${label} ${Math.round(score * 100)}%`
                 )
                 .join(" · ")}
+            </p>
+          )}
+          {monitor.speechStatus === "on" && (
+            <p className="m-0 text-xs text-[#a8bacb]">
+              Understanding speech in {languageNames[monitor.language]}. Switch
+              the language at the top if people speak the other one.
             </p>
           )}
           {listening && monitor.lastHeard && (
@@ -243,10 +253,12 @@ export function MonitorScreen() {
           <p className="m-0 text-xs text-[#a7adb2]">
             Simulate a trigger (same flow as a real one):
           </p>
-          <SimulatePanel
-            disabled={!listening || state.phase !== "listening"}
-            onSimulate={monitor.simulate}
-          />
+          {!listening && (
+            <p className="m-0 text-xs text-[#e2b78e]">
+              Press Start listening first.
+            </p>
+          )}
+          <SimulatePanel disabled={!listening} onSimulate={monitor.simulate} />
           {monitor.deviceToken && (
             <>
               <h3 className="m-0 mt-2 text-sm font-semibold text-[#d4e0ec]">

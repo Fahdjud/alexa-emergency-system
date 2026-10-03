@@ -5,6 +5,7 @@ import { INCIDENTS } from "./incidents"
 import {
   addSoundFrame,
   matchPhrase,
+  matchPhraseInAnyLanguage,
   matchSound,
   needsAiCheck,
   pickMostSevere,
@@ -167,5 +168,19 @@ describe("sound history", () => {
     expect(frames.map((f) => f.timeMs)).toEqual([
       15_000, 16_000, 17_000, 18_000, 19_000, 20_000,
     ])
+  })
+})
+
+describe("matchPhraseInAnyLanguage", () => {
+  it("finds Arabic and English phrases whichever language is selected", () => {
+    expect(matchPhraseInAnyLanguage("أنقذوني")[0]).toMatchObject({
+      incidentId: "help_call",
+      language: "ar",
+    })
+    expect(matchPhraseInAnyLanguage("help me")[0]).toMatchObject({
+      incidentId: "help_call",
+      language: "en",
+    })
+    expect(matchPhraseInAnyLanguage("good morning")).toEqual([])
   })
 })

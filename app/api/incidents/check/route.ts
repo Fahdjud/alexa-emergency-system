@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   const body: AiCheckResponse = {
     transcript,
     classification,
-    isIncident: isIncident(classification),
+    isIncident: isIncident(classification, transcript),
   }
   return Response.json(body, { headers: { "Cache-Control": "no-store" } })
 }

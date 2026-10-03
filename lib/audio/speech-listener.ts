@@ -30,8 +30,12 @@ type Options = {
   onStatus: (status: SpeechListenerStatus) => void
 }
 
-/** Wait before restarting after an error, so a network outage does not cause a tight loop. */
-const RESTART_DELAY_MS = 1000
+/**
+ * Chrome ends a session after a pause in speech; restart at once so no words are lost.
+ * After an error (e.g. network), wait a little so an outage does not cause a tight loop.
+ */
+const RESTART_AFTER_END_MS = 0
+const RESTART_AFTER_ERROR_MS = 1000
 
 export function createWebSpeechListener({
   languageTag,
@@ -63,7 +67,9 @@ export function createWebSpeechListener({
         if (text) onTranscript(text, result.isFinal)
       }
     }
+    let failed = false
     instance.onerror = (event) => {
+      failed = event.error !== "no-speech" && event.error !== "aborted"
       if (
         event.error === "not-allowed" ||
         event.error === "service-not-allowed"
@@ -73,9 +79,15 @@ export function createWebSpeechListener({
       }
     }
     instance.onend = () => {
+      // Events from a session we already stopped (pause, stop, language change) must not
+      // touch the current one; otherwise two sessions fight and recognition silently stops.
+      if (recognition !== instance) return
       recognition = null
       clearTimeout(restartTimer)
-      restartTimer = setTimeout(launch, RESTART_DELAY_MS)
+      restartTimer = setTimeout(
+        launch,
+        failed ? RESTART_AFTER_ERROR_MS : RESTART_AFTER_END_MS
+      )
     }
     recognition = instance
     try {

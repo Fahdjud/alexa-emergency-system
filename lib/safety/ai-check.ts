@@ -14,8 +14,13 @@ import type { IncidentTypeId } from "./types"
 /** The model must be at least this sure that nothing is wrong before we skip asking. */
 export const DISMISS_CONFIDENCE = 0.8
 
-/** Ask the person unless the model is confident there is no incident. Doubt always means asking. */
-export function isIncident(classification: Classification): boolean {
+/** Ask the person unless the model is confident, from real words, that there is no incident. Doubt always means asking. */
+export function isIncident(
+  classification: Classification,
+  transcript: string
+): boolean {
+  // No transcript (silence, or transcription failed): the model had nothing to judge, so never dismiss.
+  if (!transcript.trim()) return true
   return !(
     classification.incidentType === "none" &&
     classification.confidence >= DISMISS_CONFIDENCE

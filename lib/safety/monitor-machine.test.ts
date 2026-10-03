@@ -7,6 +7,7 @@ import {
   monitorReducer,
   type MonitorEvent,
   type MonitorState,
+  whyTriggerIgnored,
 } from "./monitor-machine"
 import type { TriggerMatch } from "./types"
 
@@ -143,5 +144,28 @@ describe("monitorReducer", () => {
     )
     expect(run([{ type: "resume" }], cancelled).phase).toBe("listening")
     expect(run([{ type: "stop" }], confirming).phase).toBe("idle")
+  })
+})
+
+describe("whyTriggerIgnored", () => {
+  it("agrees with the reducer about which triggers are acted on", () => {
+    const confirming = run(
+      [{ type: "trigger", match: fallSound, needsAiCheck: false, nowMs: 0 }],
+      listening
+    )
+    expect(whyTriggerIgnored(listening, glassSound)).toBeNull()
+    expect(whyTriggerIgnored(initialMonitorState, glassSound)).toMatch(
+      /Not listening/
+    )
+    expect(whyTriggerIgnored(confirming, glassSound)).toMatch(
+      /Already asking about: Possible fall/
+    )
+    expect(whyTriggerIgnored(confirming, breathSpeech)).toBeNull()
+    expect(
+      whyTriggerIgnored(
+        run([{ type: "reply", intent: "fine", nowMs: 1 }], confirming),
+        glassSound
+      )
+    ).toMatch(/Just finished/)
   })
 })
