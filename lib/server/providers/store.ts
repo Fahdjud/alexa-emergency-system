@@ -9,6 +9,7 @@
  */
 import "server-only"
 
+import type { MonitorStatus } from "@/lib/safety/monitor-health"
 import type { Classification } from "@/lib/safety/schemas"
 import type { IncidentTypeId, Language, Severity } from "@/lib/safety/types"
 
@@ -78,9 +79,20 @@ export interface IncidentStore {
 
   saveSnippet(incidentId: string, wav: Blob): Promise<string>
   getSnippet(path: string): Promise<Blob | null>
+
+  /** The household's monitor: last heartbeat and whether "offline" was reported. */
+  getMonitorStatus(): Promise<MonitorStatus | null>
+  saveMonitorStatus(status: MonitorStatus): Promise<void>
+
+  /** Applies lib/safety/retention.ts: removes expired audio snippets and incident records. */
+  deleteExpired(nowMs: number): Promise<{ snippets: number; incidents: number }>
 }
 
-/** Async so a remote store (Supabase, next step) can be created lazily without changing callers. */
+/** Supabase in production; the in-memory store for local development and tests. */
 export async function getStore(): Promise<IncidentStore> {
+  if (process.env.STORE_PROVIDER === "supabase") {
+    const { getSupabaseStore } = await import("./store-supabase")
+    return getSupabaseStore()
+  }
   return memoryStore
 }

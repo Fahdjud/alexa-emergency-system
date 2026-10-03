@@ -8,7 +8,12 @@
  */
 import "server-only"
 
-import { randomBytes, randomUUID } from "node:crypto"
+import { randomUUID } from "node:crypto"
+
+import type { MonitorStatus } from "@/lib/safety/monitor-health"
+import { recordExpiresAtMs, snippetExpiresAtMs } from "@/lib/safety/retention"
+
+import { newInviteCode } from "@/lib/server/invite-code"
 
 import type { ContactRecord, IncidentRecord, IncidentStore } from "./store"
 
@@ -16,6 +21,7 @@ export function createMemoryStore(): IncidentStore {
   const contacts = new Map<string, ContactRecord>()
   const incidents = new Map<string, IncidentRecord>()
   const snippets = new Map<string, Blob>()
+  let monitorStatus: MonitorStatus | null = null
 
   return {
     async listContacts() {
@@ -79,12 +85,33 @@ export function createMemoryStore(): IncidentStore {
     async getSnippet(path) {
       return snippets.get(path) ?? null
     },
-  }
-}
 
-/** Short, URL-safe and unguessable; Telegram start payloads allow A-Z a-z 0-9 _ - up to 64 characters. */
-export function newInviteCode(): string {
-  return randomBytes(12).toString("base64url")
+    async getMonitorStatus() {
+      return monitorStatus
+    },
+
+    async saveMonitorStatus(status) {
+      monitorStatus = status
+    },
+
+    async deleteExpired(nowMs) {
+      let deletedSnippets = 0
+      let deletedIncidents = 0
+      for (const incident of [...incidents.values()]) {
+        const escalated = incident.escalationStartedAtMs !== null
+        if (incident.snippetPath && snippetExpiresAtMs({ createdAtMs: incident.createdAtMs, escalated }) <= nowMs) {
+          snippets.delete(incident.snippetPath)
+          incidents.set(incident.id, { ...incident, snippetPath: null })
+          deletedSnippets++
+        }
+        if (recordExpiresAtMs(incident) <= nowMs) {
+          incidents.delete(incident.id)
+          deletedIncidents++
+        }
+      }
+      return { snippets: deletedSnippets, incidents: deletedIncidents }
+    },
+  }
 }
 
 /** One shared instance per server process; kept on globalThis so dev reloads do not wipe it. */

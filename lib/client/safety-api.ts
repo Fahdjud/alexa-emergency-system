@@ -67,6 +67,15 @@ export async function addContact(name: string, priority: number, deviceToken: st
   return body?.contact ?? null
 }
 
+export async function sendHeartbeat(listening: boolean, deviceToken: string): Promise<boolean> {
+  const body = await call<{ ok: boolean }>("/api/heartbeat", deviceToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ listening }),
+  })
+  return body?.ok === true
+}
+
 async function call<T>(url: string, deviceToken: string, init: RequestInit = {}): Promise<T | null> {
   try {
     const response = await fetch(url, {

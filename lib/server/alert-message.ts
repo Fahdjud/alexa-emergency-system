@@ -52,3 +52,11 @@ export function welcomeText(contactName: string): string {
 function formatRiyadhTime(ms: number): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" }).format(ms)
 }
+
+export function monitorOfflineText(lastSeenMs: number): string {
+  return `⚠️ The home safety monitor has been offline since ${formatRiyadhTime(lastSeenMs)}. Nothing is listening until it is back: check the tablet or laptop (power, Wi-Fi, browser tab). / جهاز المراقبة متوقف. تحقق من الجهاز.`
+}
+
+export function monitorBackText(): string {
+  return "✅ The home safety monitor is back online. / جهاز المراقبة يعمل مجددًا."
+}

@@ -25,11 +25,12 @@ import { useSoundTriggers } from "@/hooks/use-sound-triggers"
 import { speak, stopSpeaking } from "@/lib/audio/speak"
 import { createWebSpeechListener, type SpeechListener, type SpeechListenerStatus } from "@/lib/audio/speech-listener"
 import { checkIncident } from "@/lib/client/check-incident"
-import { getIncidentStatus, reportIncident, sendAnswer, type IncidentStatusView } from "@/lib/client/safety-api"
+import { getIncidentStatus, reportIncident, sendAnswer, sendHeartbeat, type IncidentStatusView } from "@/lib/client/safety-api"
 import { createStoredValue } from "@/lib/client/stored-value"
 import { interpretReply } from "@/lib/safety/confirmation"
 import { getIncident, SNOOZE_AFTER_CANCEL_MS } from "@/lib/safety/incidents"
 import { matchPhrase, needsAiCheck, pickMostSevere } from "@/lib/safety/match-trigger"
+import { HEARTBEAT_EVERY_MS } from "@/lib/safety/monitor-health"
 import { initialMonitorState, monitorReducer } from "@/lib/safety/monitor-machine"
 import { OUTCOME_LINES, REPLY_HINT, SERVER_OUTCOME_LINES, SPEECH_LANGUAGE_TAGS } from "@/lib/safety/region"
 import type { Classification } from "@/lib/safety/schemas"
@@ -273,6 +274,19 @@ export function useSafetyMonitor() {
     const timer = setInterval(poll, STATUS_POLL_MS)
     return () => clearInterval(timer)
   }, [state.phase, escalatedServerId, say])
+
+  // Heartbeat: the server tells contact 1 if these stop (tab closed, device off).
+  // Stopping on purpose sends one "not listening" beat, so a deliberate pause does not alert anyone.
+  useEffect(() => {
+    if (!deviceToken) return
+    if (!listening) {
+      void sendHeartbeat(false, deviceToken)
+      return
+    }
+    void sendHeartbeat(true, deviceToken)
+    const timer = setInterval(() => void sendHeartbeat(true, deviceToken), HEARTBEAT_EVERY_MS)
+    return () => clearInterval(timer)
+  }, [listening, deviceToken])
 
   const resume = useCallback(() => {
     setEscalatedServerId(null)
