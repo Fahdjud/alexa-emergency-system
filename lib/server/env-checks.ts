@@ -47,7 +47,6 @@ const BUILD_STEPS: BuildStep[] = ["PR 6", "PR 7", "PR 8"]
 
 const ok: Outcome = { status: "ok" }
 const invalid = (hint: string): Outcome => ({ status: "invalid", hint })
-const warning = (hint: string): Outcome => ({ status: "warning", hint })
 
 function oneOf(...allowed: string[]) {
   return (value: string) =>
@@ -75,13 +74,14 @@ function checkGeneratedSecret(value: string): Outcome {
   return ok
 }
 
+/** Workspace keys come in more than one format (sk-ant-api…, sk-ant-usr…); admin keys cannot call Claude. */
 function checkAnthropicKey(value: string): Outcome {
-  if (value.startsWith("sk-ant-api")) return ok
-  if (value.startsWith("sk-ant-"))
-    return warning(
-      'Anthropic API keys normally start with "sk-ant-api". Check this is an API key from console.anthropic.com.'
+  if (value.startsWith("sk-ant-admin"))
+    return invalid(
+      "This is an Admin API key, which cannot call Claude. Create a normal API key in a workspace."
     )
-  return invalid('Anthropic API keys start with "sk-ant-api".')
+  if (value.startsWith("sk-ant-")) return ok
+  return invalid('Anthropic API keys start with "sk-ant-".')
 }
 
 function checkTelegramToken(value: string): Outcome {
