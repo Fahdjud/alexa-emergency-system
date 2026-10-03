@@ -151,3 +151,27 @@ function isMoreSevere(match: TriggerMatch, open: OpenIncident): boolean {
     SEVERITY_RANK[getIncident(open.incidentId).severity]
   )
 }
+
+/**
+ * Why a trigger would be ignored in this state, or null if it would be acted on.
+ * Mirrors monitorReducer, so the screen can say why nothing happened instead of staying silent.
+ */
+export function whyTriggerIgnored(
+  state: MonitorState,
+  match: TriggerMatch
+): string | null {
+  switch (state.phase) {
+    case "listening":
+      return null
+    case "idle":
+      return "Not listening. Press Start listening."
+    case "checking":
+    case "confirming":
+      return isMoreSevere(match, state.incident)
+        ? null
+        : `Already asking about: ${getIncident(state.incident.incidentId).label}`
+    case "cancelled":
+    case "escalated":
+      return "Just finished an alert; listening again in a few seconds."
+  }
+}

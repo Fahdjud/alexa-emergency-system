@@ -17,9 +17,16 @@ const classification = (
 
 describe("isIncident", () => {
   it("dismisses only when the model is confident nothing is wrong", () => {
-    expect(isIncident(classification("none", 0.9))).toBe(false)
-    expect(isIncident(classification("none", 0.79))).toBe(true)
-    expect(isIncident(classification("help_call", 0.2))).toBe(true)
+    expect(isIncident(classification("none", 0.9), "the film says help")).toBe(
+      false
+    )
+    expect(isIncident(classification("none", 0.79), "help")).toBe(true)
+    expect(isIncident(classification("help_call", 0.2), "help")).toBe(true)
+  })
+
+  it("never dismisses when there was no transcript to judge", () => {
+    expect(isIncident(classification("none", 1), "")).toBe(true)
+    expect(isIncident(classification("none", 1), "   ")).toBe(true)
   })
 })
 

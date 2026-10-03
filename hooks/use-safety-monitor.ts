@@ -16,7 +16,11 @@
  *
  * The server is told about the incident as soon as the question is asked, and
  * gets the answer when it comes, so it can escalate by itself if this tab
- * dies mid-question. After escalating, the screen shows who is handling it.
+ * dies mid-question. After escalating, the monitor goes back to listening on
+ * its own (escalation runs on the server) and keeps showing who is handling it.
+ *
+ * Nothing is dropped silently: a trigger that is ignored (busy, or the same
+ * alert paused after "I'm fine") still appears in the detections with why.
  */
 import {
   useCallback,
@@ -47,7 +51,7 @@ import { createStoredValue } from "@/lib/client/stored-value"
 import { interpretReply } from "@/lib/safety/confirmation"
 import { getIncident, SNOOZE_AFTER_CANCEL_MS } from "@/lib/safety/incidents"
 import {
-  matchPhrase,
+  matchPhraseInAnyLanguage,
   needsAiCheck,
   pickMostSevere,
 } from "@/lib/safety/match-trigger"
@@ -55,6 +59,7 @@ import { HEARTBEAT_EVERY_MS } from "@/lib/safety/monitor-health"
 import {
   initialMonitorState,
   monitorReducer,
+  whyTriggerIgnored,
 } from "@/lib/safety/monitor-machine"
 import {
   OUTCOME_LINES,
@@ -73,6 +78,8 @@ import type {
 /** Interim speech results repeat; report the same spoken incident at most this often. */
 const PHRASE_COOLDOWN_MS = 10_000
 const RESUME_AFTER_CANCEL_MS = 4000
+/** After escalating, listen again once the device has finished speaking; the server keeps alerting. */
+const RESUME_AFTER_ESCALATION_MS = 10_000
 const STATUS_POLL_MS = 10_000
 
 type CheckedSnippet = {
@@ -94,6 +101,12 @@ const deviceTokenStore = createStoredValue<string>(
 )
 
 export type DialogueLine = { id: number; role: "user" | "alexa"; text: string }
+
+export type ActiveAlert = {
+  incidentId: IncidentTypeId
+  reason: "asked-for-help" | "no-answer"
+  serverId: string | null
+}
 
 export type Detection = {
   id: string
@@ -123,16 +136,17 @@ export function useSafetyMonitor() {
   const stateRef = useRef(state)
   const languageRef = useRef(language)
   const listenerRef = useRef<SpeechListener | null>(null)
-  const snoozedUntil = useRef(new Map<IncidentTypeId, number>())
+  /** Alerts paused after an outcome, so one ongoing situation does not ask again and again. */
+  const snoozed = useRef(
+    new Map<IncidentTypeId, { untilMs: number; why: "fine" | "alerting" }>()
+  )
   const lastPhraseTrigger = useRef(new Map<IncidentTypeId, number>())
   const nextLineId = useRef(1)
   /** AI check results, reused when reporting the incident (keyed by the incident's startedAtMs). */
   const checkedSnippets = useRef(new Map<number, CheckedSnippet>())
   /** Server ids of incidents reported but not yet answered (keyed by startedAtMs). */
   const unansweredOnServer = useRef(new Map<number, Promise<string | null>>())
-  const [escalatedServerId, setEscalatedServerId] = useState<string | null>(
-    null
-  )
+  const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null)
   const [serverStatus, setServerStatus] = useState<IncidentStatusView | null>(
     null
   )
@@ -155,11 +169,33 @@ export function useSafetyMonitor() {
   const handleTrigger = useCallback(
     (match: TriggerMatch, options: { simulated?: boolean } = {}) => {
       const nowMs = Date.now()
-      if ((snoozedUntil.current.get(match.incidentId) ?? 0) > nowMs) return
       const detectionId = `${nowMs}-${match.incidentId}`
-      setDetections((current) =>
-        [{ id: detectionId, atMs: nowMs, match }, ...current].slice(0, 8)
-      )
+      const record = (note?: string) =>
+        setDetections((current) =>
+          [{ id: detectionId, atMs: nowMs, match, note }, ...current].slice(
+            0,
+            8
+          )
+        )
+
+      const snooze = snoozed.current.get(match.incidentId)
+      const snoozedForMs = (snooze?.untilMs ?? 0) - nowMs
+      if (snooze && snoozedForMs > 0 && !options.simulated) {
+        const why =
+          snooze.why === "fine"
+            ? "you said you're fine"
+            : "contacts are already being alerted about this"
+        record(
+          `Ignored: ${why}, so this alert is paused for ${Math.ceil(snoozedForMs / 1000)} s`
+        )
+        return
+      }
+      const ignored = whyTriggerIgnored(stateRef.current, match)
+      if (ignored) {
+        record(`Ignored: ${ignored}`)
+        return
+      }
+      record()
       const note = (text: string) =>
         setDetections((current) =>
           current.map((detection) =>
@@ -231,7 +267,7 @@ export function useSafetyMonitor() {
         return
       }
 
-      const match = pickMostSevere(matchPhrase(text, languageRef.current))
+      const match = pickMostSevere(matchPhraseInAnyLanguage(text))
       if (!match) return
       if (
         nowMs - (lastPhraseTrigger.current.get(match.incidentId) ?? 0) <
@@ -320,10 +356,10 @@ export function useSafetyMonitor() {
   useEffect(() => {
     const current = stateRef.current
     if (current.phase === "cancelled") {
-      snoozedUntil.current.set(
-        current.incident.incidentId,
-        current.atMs + SNOOZE_AFTER_CANCEL_MS
-      )
+      snoozed.current.set(current.incident.incidentId, {
+        untilMs: current.atMs + SNOOZE_AFTER_CANCEL_MS,
+        why: "fine",
+      })
       void say(OUTCOME_LINES.cancelled[languageRef.current])
       const timer = setTimeout(
         () => dispatch({ type: "resume" }),
@@ -331,8 +367,20 @@ export function useSafetyMonitor() {
       )
       return () => clearTimeout(timer)
     }
-    if (current.phase === "escalated")
+    if (current.phase === "escalated") {
+      const { incidentId } = current.incident
+      setActiveAlert({ incidentId, reason: current.reason, serverId: null })
+      snoozed.current.set(incidentId, {
+        untilMs: current.atMs + SNOOZE_AFTER_CANCEL_MS,
+        why: "alerting",
+      })
       void say(OUTCOME_LINES.escalated[languageRef.current])
+      const timer = setTimeout(
+        () => dispatch({ type: "resume" }),
+        RESUME_AFTER_ESCALATION_MS
+      )
+      return () => clearTimeout(timer)
+    }
   }, [outcomeKey, say])
 
   // Tell the server as soon as the question is asked (once per incident).
@@ -387,12 +435,15 @@ export function useSafetyMonitor() {
     }
     unansweredOnServer.current.clear()
     if (current.phase === "escalated")
-      void ownReport?.then((id) => setEscalatedServerId(id))
+      void ownReport?.then((serverId) =>
+        setActiveAlert((alert) => (alert ? { ...alert, serverId } : alert))
+      )
   }, [outcomeKey])
 
-  // While escalated, show who is handling it, or that nobody answered.
+  // While an alert is active, show who is handling it, or that nobody answered.
+  const escalatedServerId = activeAlert?.serverId ?? null
   useEffect(() => {
-    if (state.phase !== "escalated" || !escalatedServerId) return
+    if (!escalatedServerId) return
     const token = deviceTokenStore.read()
     let lastSpoken = ""
     const poll = async () => {
@@ -415,7 +466,7 @@ export function useSafetyMonitor() {
     void poll()
     const timer = setInterval(poll, STATUS_POLL_MS)
     return () => clearInterval(timer)
-  }, [state.phase, escalatedServerId, say])
+  }, [escalatedServerId, say])
 
   // Heartbeat: the server tells contact 1 if these stop (tab closed, device off).
   // Stopping on purpose sends one "not listening" beat, so a deliberate pause does not alert anyone.
@@ -433,10 +484,11 @@ export function useSafetyMonitor() {
     return () => clearInterval(timer)
   }, [listening, deviceToken])
 
-  const resume = useCallback(() => {
-    setEscalatedServerId(null)
+  /** Hides the alert card. Escalation itself continues on the server until someone acknowledges. */
+  const dismissAlert = useCallback(() => {
+    setActiveAlert(null)
     setServerStatus(null)
-    dispatch({ type: "resume" })
+    if (stateRef.current.phase === "escalated") dispatch({ type: "resume" })
   }, [])
 
   const stop = useCallback(() => {
@@ -459,6 +511,7 @@ export function useSafetyMonitor() {
     deviceToken,
     setDeviceToken: deviceTokenStore.write,
     serverStatus,
+    activeAlert,
     soundStatus: sounds.status,
     hearing: sounds.hearing,
     speechStatus: listening ? speechStatus : "off",
@@ -468,7 +521,7 @@ export function useSafetyMonitor() {
     start: audio.start,
     stop,
     answer,
-    resume,
+    dismissAlert,
     simulate: (match: TriggerMatch) =>
       handleTrigger(match, { simulated: true }),
   }

@@ -8,6 +8,7 @@
  * server (the rules-based fallback classifier reuses matchPhrase).
  */
 import { INCIDENTS, SEVERITY_RANK } from "./incidents"
+import { SUPPORTED_LANGUAGES } from "./region"
 import { containsPhrase, normalizeText } from "./normalize-text"
 import type {
   IncidentDefinition,
@@ -88,6 +89,20 @@ export function matchPhrase(
         ]
       : []
   })
+}
+
+/**
+ * Speech matches in every supported language. Recognition runs in one language at a time,
+ * but a transcript in either script is checked against both phrase lists, so a phrase is
+ * never missed because of the language switch.
+ */
+export function matchPhraseInAnyLanguage(
+  text: string,
+  incidents: IncidentDefinition[] = INCIDENTS
+): TriggerMatch[] {
+  return SUPPORTED_LANGUAGES.flatMap((language) =>
+    matchPhrase(text, language, incidents)
+  )
 }
 
 /** When several incidents match at once, act on the most severe; ties go to config order. */
