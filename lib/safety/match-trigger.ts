@@ -63,7 +63,10 @@ function isTriggered(
   return coversWindow && loudFrames.length >= inWindow.length * SUSTAINED_SHARE
 }
 
-/** Speech matches, one per incident, using that incident's longest matching phrase (the best quote). */
+/**
+ * Speech matches, one per incident: the longest matching phrase (the best
+ * quote), or else a word pair such as "heart" + "hurts".
+ */
 export function matchPhrase(
   text: string,
   language: Language,
@@ -73,11 +76,13 @@ export function matchPhrase(
   if (!normalized) return []
 
   return incidents.flatMap((incident) => {
-    const phrase = incident.triggerPhrases[language]
-      .filter((candidate) =>
-        containsPhrase(normalized, normalizeText(candidate))
-      )
-      .sort((a, b) => b.length - a.length)[0]
+    const phrase =
+      incident.triggerPhrases[language]
+        .filter((candidate) =>
+          containsPhrase(normalized, normalizeText(candidate))
+        )
+        .sort((a, b) => b.length - a.length)[0] ??
+      matchWordPair(normalized, incident.triggerWordPairs?.[language])
     return phrase
       ? [
           {
@@ -89,6 +94,19 @@ export function matchPhrase(
         ]
       : []
   })
+}
+
+/** Returns "first second" when one word from each list is in the text, else undefined. */
+function matchWordPair(
+  normalizedText: string,
+  pair: [string[], string[]] | undefined
+): string | undefined {
+  if (!pair) return undefined
+  const words = new Set(normalizedText.split(" "))
+  const [first, second] = pair.map((list) =>
+    list.find((word) => words.has(normalizeText(word)))
+  )
+  return first && second ? `${first} … ${second}` : undefined
 }
 
 /**

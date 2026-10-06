@@ -11,6 +11,8 @@
  * - triggerPhrases: matched as whole words after normalising the text
  *   ("I've" = "I have", Arabic diacritics and letter variants ignored), so
  *   list each phrase once.
+ * - triggerWordPairs: a looser speech trigger. It fires when one word from
+ *   each list is said, e.g. a body part and a pain word ("my heart hurts").
  * - confirmationQuestion: always an "are you okay?" question, so "yes" means
  *   "I'm fine" and "no" means "help".
  * - aiCheck: whether a trigger from that source is first transcribed and
@@ -25,6 +27,8 @@ export const INCIDENTS: IncidentDefinition[] = [
   {
     id: "smoke_co_alarm",
     label: "Smoke or carbon monoxide alarm",
+    description:
+      "The beeping of a smoke, fire or gas alarm, or someone saying there is a fire.",
     severity: "critical",
     triggerSounds: [
       { label: "Smoke detector, smoke alarm", minScore: 0.3 },
@@ -49,6 +53,8 @@ export const INCIDENTS: IncidentDefinition[] = [
   {
     id: "medical_distress",
     label: "Spoken medical distress",
+    description:
+      "Someone saying they cannot breathe, their chest or head hurts, or they feel dizzy.",
     severity: "critical",
     triggerSounds: [],
     triggerPhrases: {
@@ -75,6 +81,45 @@ export const INCIDENTS: IncidentDefinition[] = [
         "راح يغمى علي",
       ],
     },
+    triggerWordPairs: {
+      en: [
+        [
+          "heart",
+          "chest",
+          "head",
+          "stomach",
+          "belly",
+          "tummy",
+          "arm",
+          "neck",
+          "back",
+        ],
+        [
+          "hurt",
+          "hurts",
+          "hurting",
+          "pain",
+          "painful",
+          "ache",
+          "aches",
+          "aching",
+          "sore",
+        ],
+      ],
+      ar: [
+        ["قلبي", "صدري", "راسي", "رأسي", "بطني", "ذراعي", "رقبتي", "ظهري"],
+        [
+          "يوجعني",
+          "توجعني",
+          "يألمني",
+          "تألمني",
+          "يعورني",
+          "تعورني",
+          "وجع",
+          "ألم",
+        ],
+      ],
+    },
     confirmationQuestion: {
       en: "It sounds like you may not feel well. Are you okay?",
       ar: "يبدو أنك لا تشعر بخير. هل أنت بخير؟",
@@ -85,14 +130,33 @@ export const INCIDENTS: IncidentDefinition[] = [
   {
     id: "fall",
     label: "Possible fall",
+    description:
+      "A heavy thud or crash, or someone saying they fell or cannot get up.",
     severity: "high",
     triggerSounds: [
       { label: "Thump, thud", minScore: 0.4 },
       { label: "Smash, crash", minScore: 0.4 },
     ],
     triggerPhrases: {
-      en: ["i have fallen", "i fell", "i fell down", "i cannot get up"],
-      ar: ["طحت", "وقعت", "سقطت", "ما أقدر أقوم", "مو قادر أقوم"],
+      en: [
+        "i have fallen",
+        "i fell",
+        "i fell down",
+        "i cannot get up",
+        "i slipped",
+        "i tripped",
+        "help me up",
+      ],
+      ar: [
+        "طحت",
+        "وقعت",
+        "سقطت",
+        "انزلقت",
+        "تزحلقت",
+        "ما أقدر أقوم",
+        "مو قادر أقوم",
+        "قوموني",
+      ],
     },
     confirmationQuestion: {
       en: "It sounded like something fell. Are you okay?",
@@ -104,6 +168,8 @@ export const INCIDENTS: IncidentDefinition[] = [
   {
     id: "help_call",
     label: "Call for help",
+    description:
+      "Someone calling “help”, or asking to call family or an ambulance.",
     severity: "high",
     triggerSounds: [],
     triggerPhrases: {
@@ -147,6 +213,7 @@ export const INCIDENTS: IncidentDefinition[] = [
   {
     id: "screaming_crying",
     label: "Prolonged screaming or crying",
+    description: "Screaming or crying that goes on for several seconds.",
     severity: "high",
     triggerSounds: [
       { label: "Screaming", minScore: 0.4, sustainedMs: 5000 },
@@ -164,6 +231,7 @@ export const INCIDENTS: IncidentDefinition[] = [
   {
     id: "glass_break",
     label: "Glass breaking",
+    description: "The sound of glass or a window shattering.",
     severity: "medium",
     triggerSounds: [
       { label: "Shatter", minScore: 0.3 },

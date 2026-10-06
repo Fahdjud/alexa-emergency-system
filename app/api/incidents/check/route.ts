@@ -7,10 +7,12 @@
  * checks: it stores nothing. The snippet is used for this request and dropped.
  *
  * Request (multipart, "Authorization: Bearer <MONITOR_DEVICE_TOKEN>"):
- *   audio: WAV snippet, trigger: TriggerMatch as JSON, language: "en" | "ar"
+ *   audio: WAV snippet, trigger: TriggerMatch as JSON, language: "en" | "ar",
+ *   optional dismissAt: how sure the model must be to skip the question
+ *   (the household's setting, clamped to a safe range)
  * Response: { transcript, classification, isIncident }
  */
-import { isIncident } from "@/lib/safety/ai-check"
+import { isIncident, safeDismissThreshold } from "@/lib/safety/ai-check"
 import {
   LanguageSchema,
   TriggerMatchSchema,
@@ -58,7 +60,11 @@ export async function POST(request: Request) {
   const body: AiCheckResponse = {
     transcript,
     classification,
-    isIncident: isIncident(classification, transcript),
+    isIncident: isIncident(
+      classification,
+      transcript,
+      safeDismissThreshold(form?.get("dismissAt") ?? undefined)
+    ),
   }
   return Response.json(body, { headers: { "Cache-Control": "no-store" } })
 }

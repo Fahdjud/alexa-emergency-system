@@ -13,18 +13,28 @@ import type { IncidentTypeId } from "./types"
 
 /** The model must be at least this sure that nothing is wrong before we skip asking. */
 export const DISMISS_CONFIDENCE = 0.8
+/** No household setting may let the model dismiss on a weaker hunch than this. */
+const MIN_DISMISS_CONFIDENCE = 0.7
 
 /** Ask the person unless the model is confident, from real words, that there is no incident. Doubt always means asking. */
 export function isIncident(
   classification: Classification,
-  transcript: string
+  transcript: string,
+  dismissAt: number = DISMISS_CONFIDENCE
 ): boolean {
   // No transcript (silence, or transcription failed): the model had nothing to judge, so never dismiss.
   if (!transcript.trim()) return true
   return !(
     classification.incidentType === "none" &&
-    classification.confidence >= DISMISS_CONFIDENCE
+    classification.confidence >= dismissAt
   )
+}
+
+/** The household's threshold (from the setup screen), kept within a safe range. */
+export function safeDismissThreshold(value: unknown): number {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return DISMISS_CONFIDENCE
+  return Math.min(1, Math.max(MIN_DISMISS_CONFIDENCE, number))
 }
 
 /** Keeps the quote only if those exact words are in the transcript; models sometimes paraphrase. */

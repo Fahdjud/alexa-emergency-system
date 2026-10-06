@@ -128,6 +128,22 @@ export async function sendHeartbeat(
   return body?.ok === true
 }
 
+/** Checks a device token against the server before it is saved. */
+export async function verifyDeviceToken(
+  deviceToken: string
+): Promise<"ok" | "wrong" | "unreachable"> {
+  try {
+    const response = await fetch("/api/health/config", {
+      headers: { Authorization: `Bearer ${deviceToken}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+    if (response.ok) return "ok"
+    return response.status === 401 ? "wrong" : "unreachable"
+  } catch {
+    return "unreachable"
+  }
+}
+
 async function call<T>(
   url: string,
   deviceToken: string,

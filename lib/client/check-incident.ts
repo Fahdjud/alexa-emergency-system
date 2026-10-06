@@ -22,6 +22,8 @@ type Input = {
   sampleRate: number
   trigger: TriggerMatch
   language: Language
+  /** How sure the AI must be that nothing is wrong to skip the question. */
+  dismissAt: number
   deviceToken: string
 }
 
@@ -30,6 +32,7 @@ export async function checkIncident({
   sampleRate,
   trigger,
   language,
+  dismissAt,
   deviceToken,
 }: Input): Promise<AiCheckResponse | null> {
   const form = new FormData()
@@ -40,6 +43,7 @@ export async function checkIncident({
   )
   form.append("trigger", JSON.stringify(trigger))
   form.append("language", language)
+  form.append("dismissAt", String(dismissAt))
 
   try {
     const response = await fetch("/api/incidents/check", {

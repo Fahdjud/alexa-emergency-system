@@ -184,3 +184,29 @@ describe("matchPhraseInAnyLanguage", () => {
     expect(matchPhraseInAnyLanguage("good morning")).toEqual([])
   })
 })
+
+describe("word pairs", () => {
+  it("catches body part + pain in any order and either language", () => {
+    for (const said of [
+      "my heart hurt",
+      "my head hurts so much",
+      "pain in my chest",
+    ]) {
+      expect(matchPhraseInAnyLanguage(said)[0], said).toMatchObject({
+        incidentId: "medical_distress",
+      })
+    }
+    expect(matchPhraseInAnyLanguage("راسي يوجعني")[0]).toMatchObject({
+      incidentId: "medical_distress",
+      language: "ar",
+    })
+    expect(matchPhraseInAnyLanguage("رأسي يوجعني")[0]).toMatchObject({
+      incidentId: "medical_distress",
+    })
+  })
+
+  it("needs both words", () => {
+    expect(matchPhraseInAnyLanguage("my heart is happy")).toEqual([])
+    expect(matchPhraseInAnyLanguage("that hurts my feelings")).toEqual([])
+  })
+})
