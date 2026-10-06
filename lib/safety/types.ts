@@ -33,9 +33,16 @@ export type SoundTrigger = {
 export type IncidentDefinition = {
   id: IncidentTypeId
   label: string
+  /** One plain sentence for the setup screen: what the monitor listens for. */
+  description: string
   severity: Severity
   triggerSounds: SoundTrigger[]
   triggerPhrases: Record<Language, string[]>
+  /**
+   * Looser speech trigger: fires when a word from the first list and a word from
+   * the second list are both said, in any order ("my HEAD really HURTS").
+   */
+  triggerWordPairs?: Record<Language, [string[], string[]]>
   /** Must be a yes/no "are you okay?" question: "yes" is read as "I'm fine". */
   confirmationQuestion: Record<Language, string>
   /** Whether the trigger is first checked by transcription + the language model, per trigger source. */

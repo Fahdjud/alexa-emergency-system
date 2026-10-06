@@ -17,8 +17,15 @@ import {
   type SoundClassifier,
 } from "@/lib/audio/sound-classifier"
 import { concatSamples } from "@/lib/audio/snippet"
-import { addSoundFrame, matchSound } from "@/lib/safety/match-trigger"
+import { ImpactDetector } from "@/lib/audio/impact-detector"
+import { loudness } from "@/lib/audio/level"
+import {
+  addSoundFrame,
+  matchSound,
+  soundHistoryMs,
+} from "@/lib/safety/match-trigger"
 import type {
+  IncidentDefinition,
   IncidentTypeId,
   SoundFrame,
   TriggerMatch,
@@ -34,17 +41,29 @@ type Options = {
   /** useAudioCapture().onChunk: must be stable across renders. */
   onChunk: (listener: ChunkListener) => () => void
   onTrigger: (match: TriggerMatch) => void
+  /** The incidents config adjusted to the household (lib/safety/profile.ts). */
+  incidents: IncidentDefinition[]
+  /** Also report any sudden loud impact as a possible fall (falls set to "High"). */
+  detectImpacts: boolean
 }
 
-export function useSoundTriggers({ listening, onChunk, onTrigger }: Options) {
+export function useSoundTriggers({
+  listening,
+  onChunk,
+  onTrigger,
+  incidents,
+  detectImpacts,
+}: Options) {
   const [status, setStatus] = useState<ClassifierStatus>("off")
   const [hearing, setHearing] = useState<{ label: string; score: number }[]>([])
   const classifierRef = useRef<SoundClassifier | null>(null)
   const onTriggerRef = useRef(onTrigger)
+  const settingsRef = useRef({ incidents, detectImpacts })
 
   useEffect(() => {
     onTriggerRef.current = onTrigger
-  }, [onTrigger])
+    settingsRef.current = { incidents, detectImpacts }
+  }, [onTrigger, incidents, detectImpacts])
 
   // Load the model the first time listening starts, then keep it for the page's lifetime.
   useEffect(() => {
@@ -75,8 +94,33 @@ export function useSoundTriggers({ listening, onChunk, onTrigger }: Options) {
     let pendingSamples = 0
     let frames: SoundFrame[] = []
     const lastReported = new Map<IncidentTypeId, number>()
+    const impacts = new ImpactDetector()
+
+    const report = (match: TriggerMatch, now: number) => {
+      if (
+        now - (lastReported.get(match.incidentId) ?? 0) <
+        SAME_INCIDENT_COOLDOWN_MS
+      )
+        return
+      lastReported.set(match.incidentId, now)
+      onTriggerRef.current(match)
+    }
 
     const unsubscribe = onChunk((chunk, sampleRate) => {
+      const { incidents, detectImpacts } = settingsRef.current
+      const impactPeak = impacts.push(loudness(chunk), Date.now())
+      if (impactPeak !== null && detectImpacts) {
+        report(
+          {
+            incidentId: "fall",
+            source: "sound",
+            label: "Sudden loud impact",
+            score: impactPeak,
+          },
+          Date.now()
+        )
+      }
+
       pending.push(chunk)
       pendingSamples += chunk.length
       if (pendingSamples < (sampleRate * CLASSIFY_EVERY_MS) / 1000) return
@@ -88,18 +132,10 @@ export function useSoundTriggers({ listening, onChunk, onTrigger }: Options) {
       const now = Date.now()
       const frame = classifierRef.current?.classify(clip, sampleRate, now)
       if (!frame) return
-      frames = addSoundFrame(frames, frame)
+      frames = addSoundFrame(frames, frame, soundHistoryMs(incidents))
       setHearing(topSounds(frame))
 
-      for (const match of matchSound(frames)) {
-        if (
-          now - (lastReported.get(match.incidentId) ?? 0) <
-          SAME_INCIDENT_COOLDOWN_MS
-        )
-          continue
-        lastReported.set(match.incidentId, now)
-        onTriggerRef.current(match)
-      }
+      for (const match of matchSound(frames, incidents)) report(match, now)
     })
 
     return () => {

@@ -28,6 +28,27 @@ teammates can find their way around and the setup can be repeated. The demo at
 5. **Heartbeat.** If the monitor stops checking in for 5 minutes, contact 1 is
    told that nothing is listening.
 
+### Setup screen and sensitivity
+
+The first time `/monitor` opens, a short setup asks:
+
+- **Household code.** This is the `MONITOR_DEVICE_TOKEN`, checked against the server.
+- **Language** spoken at home.
+- **What to watch for.** Each incident can be set to Off, Normal or High.
+  High lowers that incident's sound thresholds, always asks without an AI
+  check, and for falls also treats any sudden loud impact as a possible fall.
+- **When to ask:**
+  - *Always ask*: no AI check at all.
+  - *Balanced*: the AI may skip the question only when it is 90% sure nothing
+    is wrong.
+  - *Fewer interruptions*: 75%, with slightly stronger sounds needed.
+  - The AI never skips the question when no words were recognised.
+- **Emergency contacts**, with share/copy invite links.
+
+The answers are saved in the browser. The rules that turn them into
+detection settings are in `lib/safety/profile.ts`. Settings (the gear icon)
+reopens the setup.
+
 Snippets are kept for 7 days (incident cancelled) or 30 days (escalated).
 Incident records are kept for 90 days.
 
@@ -58,11 +79,9 @@ Incident records are kept for 90 days.
 
    `.env.local` must hold the same `TELEGRAM_WEBHOOK_SECRET` as Vercel.
 4. **Check:** open `/health`, enter the device token, and confirm everything shows ✅.
-5. **Monitor**
-   - Open `/monitor` in Chrome and enter the device token.
-   - Under Test tools → Emergency contacts, add contacts and send each one
-     their invite link. They tap **Start** in Telegram.
-   - Click **Start listening**.
+5. **Monitor:** open `/monitor` in Chrome and follow the setup screen.
+   Add contacts and send each one their invite link; they tap **Start** in
+   Telegram. Then click **Start monitoring**.
 
 ## Running locally
 

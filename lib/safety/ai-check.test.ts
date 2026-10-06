@@ -1,7 +1,12 @@
 // Tests for the rules applied to the language model's answer.
 import { describe, expect, it } from "vitest"
 
-import { isIncident, severityFor, verifiedQuote } from "./ai-check"
+import {
+  isIncident,
+  safeDismissThreshold,
+  severityFor,
+  verifiedQuote,
+} from "./ai-check"
 import type { Classification } from "./schemas"
 
 const classification = (
@@ -52,5 +57,17 @@ describe("severityFor", () => {
     expect(severityFor("medical_distress")).toBe("critical")
     expect(severityFor("glass_break")).toBe("medium")
     expect(severityFor("none")).toBeNull()
+  })
+})
+
+describe("household threshold", () => {
+  it("uses the household's threshold, kept within a safe range", () => {
+    const none = classification("none", 0.85)
+    expect(isIncident(none, "the film says help", 0.9)).toBe(true)
+    expect(isIncident(none, "the film says help", 0.75)).toBe(false)
+    expect(safeDismissThreshold("0.9")).toBe(0.9)
+    expect(safeDismissThreshold("0.1")).toBe(0.7)
+    expect(safeDismissThreshold(undefined)).toBe(0.8)
+    expect(safeDismissThreshold("abc")).toBe(0.8)
   })
 })

@@ -25,6 +25,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -47,7 +48,14 @@ import {
   sendHeartbeat,
   type IncidentStatusView,
 } from "@/lib/client/safety-api"
-import { createStoredValue } from "@/lib/client/stored-value"
+import {
+  DEFAULT_PROFILE,
+  deviceTokenStore,
+  languageStore,
+  parseProfile,
+  profileStore,
+  saveProfile,
+} from "@/lib/client/monitor-settings"
 import { interpretReply } from "@/lib/safety/confirmation"
 import { getIncident, SNOOZE_AFTER_CANCEL_MS } from "@/lib/safety/incidents"
 import {
@@ -56,6 +64,11 @@ import {
   pickMostSevere,
 } from "@/lib/safety/match-trigger"
 import { HEARTBEAT_EVERY_MS } from "@/lib/safety/monitor-health"
+import {
+  applyProfile,
+  dismissThreshold,
+  watchesForImpacts,
+} from "@/lib/safety/profile"
 import {
   initialMonitorState,
   monitorReducer,
@@ -70,12 +83,11 @@ import {
 import type { Classification } from "@/lib/safety/schemas"
 import type {
   IncidentTypeId,
-  Language,
   ReplyIntent,
   TriggerMatch,
 } from "@/lib/safety/types"
 
-/** Interim speech results repeat; report the same spoken incident at most this often. */
+/** Interim speech results repeat; report the same spoken phrase at most this often. */
 const PHRASE_COOLDOWN_MS = 10_000
 const RESUME_AFTER_CANCEL_MS = 4000
 /** After escalating, listen again once the device has finished speaking; the server keeps alerting. */
@@ -87,18 +99,6 @@ type CheckedSnippet = {
   transcript: string
   classification: Classification
 }
-
-/** Remembered in this browser only. The device token is what lets this tab call the server. */
-const languageStore = createStoredValue<Language>(
-  "safety-monitor-language",
-  "en",
-  (value): value is Language => value === "en" || value === "ar"
-)
-const deviceTokenStore = createStoredValue<string>(
-  "safety-monitor-device-token",
-  "",
-  (value): value is string => value.length > 0
-)
 
 export type DialogueLine = { id: number; role: "user" | "alexa"; text: string }
 
@@ -128,6 +128,17 @@ export function useSafetyMonitor() {
     deviceTokenStore.read,
     deviceTokenStore.readOnServer
   )
+  const profileJson = useSyncExternalStore(
+    profileStore.subscribe,
+    profileStore.read,
+    profileStore.readOnServer
+  )
+  /** null until setup is finished; detection then uses the defaults. */
+  const profile = useMemo(() => parseProfile(profileJson), [profileJson])
+  const activeProfile = profile ?? DEFAULT_PROFILE
+  const incidents = useMemo(() => applyProfile(activeProfile), [activeProfile])
+  const incidentsRef = useRef(incidents)
+  const carefulnessRef = useRef(activeProfile.carefulness)
   const [speechStatus, setSpeechStatus] = useState<SpeechListenerStatus>("off")
   const [lastHeard, setLastHeard] = useState("")
   const [dialogue, setDialogue] = useState<DialogueLine[]>([])
@@ -140,7 +151,8 @@ export function useSafetyMonitor() {
   const snoozed = useRef(
     new Map<IncidentTypeId, { untilMs: number; why: "fine" | "alerting" }>()
   )
-  const lastPhraseTrigger = useRef(new Map<IncidentTypeId, number>())
+  /** Last time each spoken phrase triggered (keyed by incident + phrase). */
+  const lastPhraseTrigger = useRef(new Map<string, number>())
   const nextLineId = useRef(1)
   /** AI check results, reused when reporting the incident (keyed by the incident's startedAtMs). */
   const checkedSnippets = useRef(new Map<number, CheckedSnippet>())
@@ -154,7 +166,9 @@ export function useSafetyMonitor() {
   useEffect(() => {
     stateRef.current = state
     languageRef.current = language
-  }, [state, language])
+    incidentsRef.current = incidents
+    carefulnessRef.current = activeProfile.carefulness
+  }, [state, language, incidents, activeProfile.carefulness])
 
   const addLine = useCallback((role: DialogueLine["role"], text: string) => {
     const id = nextLineId.current++
@@ -167,7 +181,7 @@ export function useSafetyMonitor() {
 
   const { captureSnippet } = audio
   const handleTrigger = useCallback(
-    (match: TriggerMatch, options: { simulated?: boolean } = {}) => {
+    (match: TriggerMatch) => {
       const nowMs = Date.now()
       const detectionId = `${nowMs}-${match.incidentId}`
       const record = (note?: string) =>
@@ -180,7 +194,7 @@ export function useSafetyMonitor() {
 
       const snooze = snoozed.current.get(match.incidentId)
       const snoozedForMs = (snooze?.untilMs ?? 0) - nowMs
-      if (snooze && snoozedForMs > 0 && !options.simulated) {
+      if (snooze && snoozedForMs > 0) {
         const why =
           snooze.why === "fine"
             ? "you said you're fine"
@@ -206,8 +220,11 @@ export function useSafetyMonitor() {
         )
 
       const token = deviceTokenStore.read()
+      const dismissAt = dismissThreshold(carefulnessRef.current)
       const runAiCheck =
-        !options.simulated && needsAiCheck(match) && token !== ""
+        dismissAt !== null &&
+        needsAiCheck(match, incidentsRef.current) &&
+        token !== ""
       dispatch({ type: "trigger", match, needsAiCheck: runAiCheck, nowMs })
       if (!runAiCheck) return
 
@@ -218,6 +235,7 @@ export function useSafetyMonitor() {
               ...snippet,
               trigger: match,
               language: languageRef.current,
+              dismissAt: dismissAt ?? 1,
               deviceToken: token,
             })
           : null
@@ -267,28 +285,30 @@ export function useSafetyMonitor() {
         return
       }
 
-      const match = pickMostSevere(matchPhraseInAnyLanguage(text))
-      if (!match) return
+      const match = pickMostSevere(
+        matchPhraseInAnyLanguage(text, incidentsRef.current)
+      )
+      if (match?.source !== "speech") return
+      // Chrome repeats partial results of the same words; a different phrase always counts.
+      const key = `${match.incidentId}:${match.phrase}`
       if (
-        nowMs - (lastPhraseTrigger.current.get(match.incidentId) ?? 0) <
+        nowMs - (lastPhraseTrigger.current.get(key) ?? 0) <
         PHRASE_COOLDOWN_MS
       )
         return
-      lastPhraseTrigger.current.set(match.incidentId, nowMs)
+      lastPhraseTrigger.current.set(key, nowMs)
       handleTrigger(match)
     },
     [addLine, handleTrigger]
   )
 
   const listening = audio.status === "on"
-  const onSoundTrigger = useCallback(
-    (match: TriggerMatch) => handleTrigger(match),
-    [handleTrigger]
-  )
   const sounds = useSoundTriggers({
     listening,
     onChunk: audio.onChunk,
-    onTrigger: onSoundTrigger,
+    onTrigger: handleTrigger,
+    incidents,
+    detectImpacts: watchesForImpacts(activeProfile),
   })
 
   // Keep the state machine in step with the microphone.
@@ -510,6 +530,8 @@ export function useSafetyMonitor() {
     setLanguage: languageStore.write,
     deviceToken,
     setDeviceToken: deviceTokenStore.write,
+    profile,
+    saveProfile,
     serverStatus,
     activeAlert,
     soundStatus: sounds.status,
@@ -522,7 +544,5 @@ export function useSafetyMonitor() {
     stop,
     answer,
     dismissAlert,
-    simulate: (match: TriggerMatch) =>
-      handleTrigger(match, { simulated: true }),
   }
 }
