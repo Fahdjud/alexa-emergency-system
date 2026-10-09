@@ -7,6 +7,7 @@ import { getDemoReply, suggestions } from "./data"
 import { DevicesPanel } from "./devices-panel"
 import { MessageComposer } from "./message-composer"
 import type { ChatMessage } from "./types"
+import type { EmergencyEvent } from "@/types/emergency"
 
 type SpeechResult = {
   results: ArrayLike<ArrayLike<{ transcript: string }>>
@@ -28,6 +29,14 @@ type SpeechRecognitionController = {
 }
 
 type VoiceState = "idle" | "starting" | "listening" | "processing"
+type EmergencyStage =
+  | "idle"
+  | "first_check"
+  | "second_check"
+  | "cancelled"
+  | "sending"
+  | "published"
+  | "failed"
 
 export function AlexaAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -36,6 +45,196 @@ export function AlexaAssistant() {
   const [voiceNotice, setVoiceNotice] = useState("")
   const [devicesOpen, setDevicesOpen] = useState(false)
   const recognitionRef = useRef<SpeechRecognitionController | null>(null)
+  const [emergencyStage, setEmergencyStage] = useState<EmergencyStage>("idle")
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
+  const emergencyRef = useRef<{
+    event: EmergencyEvent
+    stage: EmergencyStage
+    requestStarted: boolean
+  } | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const messageIdRef = useRef(0)
+
+  function appendMessage(role: ChatMessage["role"], text: string) {
+    const id = ++messageIdRef.current
+    setMessages((current) => [...current, { id, role, text }])
+  }
+
+  function clearEmergencyTimers() {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    if (countdownRef.current) clearInterval(countdownRef.current)
+    timerRef.current = null
+    countdownRef.current = null
+  }
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      if (countdownRef.current) clearInterval(countdownRef.current)
+      emergencyRef.current = null
+      window.speechSynthesis?.cancel()
+    },
+    []
+  )
+
+  function cancelEmergency() {
+    const active = emergencyRef.current
+    if (
+      !active ||
+      !["first_check", "second_check"].includes(active.stage) ||
+      active.requestStarted
+    )
+      return
+    // Update the guard before cancelling speech: speech callbacks may run immediately.
+    active.stage = "cancelled"
+    clearEmergencyTimers()
+    window.speechSynthesis?.cancel()
+    setEmergencyStage("cancelled")
+    setSecondsLeft(null)
+    appendMessage(
+      "alexa",
+      "Thanks for letting me know. The emergency check is cancelled. No alert was sent."
+    )
+  }
+
+  async function escalateEmergency(
+    active: NonNullable<typeof emergencyRef.current>
+  ) {
+    if (
+      emergencyRef.current !== active ||
+      active.stage !== "second_check" ||
+      active.requestStarted
+    )
+      return
+    active.requestStarted = true
+    active.stage = "sending"
+    clearEmergencyTimers()
+    setSecondsLeft(null)
+    setEmergencyStage("sending")
+    appendMessage(
+      "alexa",
+      "No response to either safety check. Sending a possible emergency alert to your trusted contact…"
+    )
+    try {
+      const response = await fetch("/api/emergency", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(active.event),
+      })
+      const result = await response.json()
+      if (
+        !response.ok ||
+        result.status !== "published" ||
+        result.eventId !== active.event.id
+      )
+        throw new Error("Publish unsuccessful")
+      if (emergencyRef.current !== active) return
+      active.stage = "published"
+      setEmergencyStage("published")
+      appendMessage(
+        "alexa",
+        "The possible emergency alert was sent to SNS for delivery to your confirmed trusted contact. Inbox delivery is not verified by this demo."
+      )
+    } catch {
+      if (emergencyRef.current !== active) return
+      active.stage = "failed"
+      setEmergencyStage("failed")
+      appendMessage(
+        "alexa",
+        "I couldn’t confirm that the alert was published. Delivery status is unknown. This demo will not retry automatically."
+      )
+    }
+  }
+
+  function startSafetyCheck(
+    active: NonNullable<typeof emergencyRef.current>,
+    stage: "first_check" | "second_check"
+  ) {
+    clearEmergencyTimers()
+    active.stage = stage
+    setEmergencyStage(stage)
+    setSecondsLeft(null)
+    const prompt =
+      stage === "first_check"
+        ? "I heard something that may have been a fall. Are you okay?"
+        : "Are you okay? Please respond. If I don’t hear from you, I’ll send a possible emergency alert to your trusted contact."
+    appendMessage("alexa", prompt)
+    let windowStarted = false
+    const beginWindow = () => {
+      if (
+        windowStarted ||
+        emergencyRef.current !== active ||
+        active.stage !== stage
+      )
+        return
+      windowStarted = true
+      clearEmergencyTimers()
+      setSecondsLeft(5)
+      const deadline = Date.now() + 5000
+      countdownRef.current = setInterval(
+        () =>
+          setSecondsLeft(
+            Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+          ),
+        250
+      )
+      timerRef.current = setTimeout(() => {
+        if (
+          emergencyRef.current !== active ||
+          active.stage !== stage ||
+          active.requestStarted
+        )
+          return
+        if (stage === "first_check") startSafetyCheck(active, "second_check")
+        else void escalateEmergency(active)
+      }, 5000)
+    }
+    if (
+      window.speechSynthesis &&
+      typeof SpeechSynthesisUtterance !== "undefined"
+    ) {
+      try {
+        window.speechSynthesis.cancel()
+        const utterance = new SpeechSynthesisUtterance(prompt)
+        utterance.onend = beginWindow
+        utterance.onerror = beginWindow
+        // Fall back if the browser never starts or finishes speaking.
+        timerRef.current = setTimeout(() => {
+          beginWindow()
+          window.speechSynthesis.cancel()
+        }, 15000)
+        window.speechSynthesis.speak(utterance)
+      } catch {
+        beginWindow()
+      }
+    } else beginWindow()
+  }
+
+  function simulateFall() {
+    if (
+      emergencyRef.current &&
+      ["first_check", "second_check", "sending"].includes(
+        emergencyRef.current.stage
+      )
+    )
+      return
+    const active = {
+      event: {
+        id: crypto.randomUUID(),
+        type: "Possible Fall",
+        message:
+          "Demo simulation: a possible fall was detected, with no response to two safety checks.",
+        occurredAt: new Date().toISOString(),
+        location: "Demo living room",
+      },
+      stage: "first_check" as EmergencyStage,
+      requestStarted: false,
+    }
+    emergencyRef.current = active
+    appendMessage("user", "Simulate Fall (demo)")
+    startSafetyCheck(active, "first_check")
+  }
 
   useEffect(() => () => recognitionRef.current?.stop(), [])
 
@@ -59,11 +258,26 @@ export function AlexaAssistant() {
     const prompt = text.trim()
     if (!prompt) return
 
-    setMessages((current) => [
-      ...current,
-      { id: Date.now(), role: "user", text: prompt },
-      { id: Date.now() + 1, role: "alexa", text: getDemoReply(prompt) },
-    ])
+    appendMessage("user", prompt)
+    const active = emergencyRef.current
+    if (active && ["first_check", "second_check"].includes(active.stage)) {
+      const normalized = prompt
+        .toLowerCase()
+        .replace(/[’']/g, "")
+        .replace(/[.!?,]/g, "")
+        .trim()
+      if (
+        /^(im (okay|ok|fine|alright)|i am (okay|ok|fine|alright)|yes|yes im (okay|ok|fine)|yes i am (okay|ok|fine))$/.test(
+          normalized
+        )
+      )
+        cancelEmergency()
+      else
+        appendMessage(
+          "alexa",
+          "Please confirm by saying ‘I’m okay’ or pressing the I’m okay button if you are safe."
+        )
+    } else appendMessage("alexa", getDemoReply(prompt))
     setDraft("")
     setVoiceNotice("")
   }
@@ -79,10 +293,13 @@ export function AlexaAssistant() {
       SpeechRecognition?: new () => SpeechRecognitionController
       webkitSpeechRecognition?: new () => SpeechRecognitionController
     }
-    const SpeechRecognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
+    const SpeechRecognition =
+      speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
 
     if (!SpeechRecognition) {
-      setVoiceNotice("Voice input isn’t available in this browser. You can still type to Alexa.")
+      setVoiceNotice(
+        "Voice input isn’t available in this browser. You can still type to Alexa."
+      )
       return
     }
 
@@ -99,13 +316,20 @@ export function AlexaAssistant() {
     }
     controller.onerror = (event) => {
       const messages: Record<string, string> = {
-        "not-allowed": "Microphone access is blocked. Allow it in your browser settings, or type instead.",
-        "service-not-allowed": "Voice input is blocked by this browser. You can type instead.",
+        "not-allowed":
+          "Microphone access is blocked. Allow it in your browser settings, or type instead.",
+        "service-not-allowed":
+          "Voice input is blocked by this browser. You can type instead.",
         "no-speech": "I didn’t hear anything. Try again, or type instead.",
-        "audio-capture": "No microphone was found. Connect one, or type instead.",
-        network: "Voice input couldn’t connect. Check your connection, or type instead.",
+        "audio-capture":
+          "No microphone was found. Connect one, or type instead.",
+        network:
+          "Voice input couldn’t connect. Check your connection, or type instead.",
       }
-      setVoiceNotice(messages[event.error] ?? "Voice input stopped. Try again, or type instead.")
+      setVoiceNotice(
+        messages[event.error] ??
+          "Voice input stopped. Try again, or type instead."
+      )
       setVoiceState("idle")
     }
     controller.onend = () => {
@@ -121,17 +345,31 @@ export function AlexaAssistant() {
     } catch {
       recognitionRef.current = null
       setVoiceState("idle")
-      setVoiceNotice("Voice input couldn’t start. Check your microphone settings, or type instead.")
+      setVoiceNotice(
+        "Voice input couldn’t start. Check your microphone settings, or type instead."
+      )
     }
   }
 
   return (
-    <main className="grid h-dvh min-h-155 w-full grid-cols-[minmax(0,1fr)_308px] overflow-hidden bg-[#070d17] text-[#f3f6fa] [font-family:var(--font-sans),sans-serif] max-[1120px]:grid-cols-[minmax(0,1fr)_276px] max-[850px]:grid-cols-[minmax(0,1fr)_270px] max-[640px]:flex max-[640px]:h-auto max-[640px]:min-h-svh max-[640px]:flex-col max-[640px]:overflow-visible">
-      <section className="flex min-h-0 min-w-0 flex-col bg-[#0b1421] max-[640px]:h-svh max-[640px]:min-h-[620px] max-[640px]:flex-none" id="home">
-        <AlexaHeader onOpenDevices={() => setDevicesOpen(true)} />
-        <div className="flex min-h-0 flex-1 overflow-auto overscroll-contain [scrollbar-color:#39434a_transparent] scrollbar-thin">
+    <main className="grid h-dvh min-h-155 w-full grid-cols-[minmax(0,1fr)_308px] overflow-hidden bg-[#070d17] [font-family:var(--font-sans),sans-serif] text-[#f3f6fa] max-[1120px]:grid-cols-[minmax(0,1fr)_276px] max-[850px]:grid-cols-[minmax(0,1fr)_270px] max-[640px]:flex max-[640px]:h-auto max-[640px]:min-h-svh max-[640px]:flex-col max-[640px]:overflow-visible">
+      <section
+        className="flex min-h-0 min-w-0 flex-col bg-[#0b1421] max-[640px]:h-svh max-[640px]:min-h-[620px] max-[640px]:flex-none"
+        id="home"
+      >
+        <AlexaHeader
+          onOpenDevices={() => setDevicesOpen(true)}
+          onSimulateFall={simulateFall}
+          simulationBusy={["first_check", "second_check", "sending"].includes(
+            emergencyStage
+          )}
+        />
+        <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-color:#39434a_transparent] overflow-auto overscroll-contain">
           {messages.length === 0 ? (
-            <WelcomePanel suggestions={suggestions} onSuggestion={sendMessage} />
+            <WelcomePanel
+              suggestions={suggestions}
+              onSuggestion={sendMessage}
+            />
           ) : (
             <ConversationThread messages={messages} />
           )}
@@ -143,6 +381,15 @@ export function AlexaAssistant() {
           onDraftChange={setDraft}
           onSend={() => sendMessage()}
           onToggleListening={toggleListening}
+          safetyCheck={
+            emergencyStage === "first_check"
+              ? 1
+              : emergencyStage === "second_check"
+                ? 2
+                : null
+          }
+          secondsLeft={secondsLeft}
+          onConfirmOkay={() => sendMessage("I'm okay")}
         />
       </section>
       <DevicesPanel open={devicesOpen} onClose={() => setDevicesOpen(false)} />
