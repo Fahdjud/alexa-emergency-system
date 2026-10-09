@@ -74,12 +74,7 @@ import {
   monitorReducer,
   whyTriggerIgnored,
 } from "@/lib/safety/monitor-machine"
-import {
-  OUTCOME_LINES,
-  REPLY_HINT,
-  SERVER_OUTCOME_LINES,
-  SPEECH_LANGUAGE_TAGS,
-} from "@/lib/safety/region"
+import { languagePack } from "@/lib/safety/languages"
 import type { Classification } from "@/lib/safety/schemas"
 import type {
   IncidentTypeId,
@@ -321,7 +316,7 @@ export function useSafetyMonitor() {
   useEffect(() => {
     if (!listening) return
     const listener = createWebSpeechListener({
-      languageTag: SPEECH_LANGUAGE_TAGS[language],
+      languageTag: languagePack(language).speechTag,
       onTranscript: handleTranscript,
       onStatus: setSpeechStatus,
     })
@@ -338,7 +333,7 @@ export function useSafetyMonitor() {
     async (text: string) => {
       addLine("alexa", text)
       listenerRef.current?.pause()
-      await speak(text, SPEECH_LANGUAGE_TAGS[languageRef.current])
+      await speak(text, languagePack(languageRef.current).speechTag)
       listenerRef.current?.resume()
     },
     [addLine]
@@ -354,7 +349,7 @@ export function useSafetyMonitor() {
     if (current.phase !== "confirming") return
     const lang = languageRef.current
     void say(
-      `${getIncident(current.incident.incidentId).confirmationQuestion[lang]} ${REPLY_HINT[lang]}`
+      `${getIncident(current.incident.incidentId).confirmationQuestion[lang]} ${languagePack(lang).lines.replyHint}`
     )
   }, [askKey, say])
 
@@ -380,7 +375,7 @@ export function useSafetyMonitor() {
         untilMs: current.atMs + SNOOZE_AFTER_CANCEL_MS,
         why: "fine",
       })
-      void say(OUTCOME_LINES.cancelled[languageRef.current])
+      void say(languagePack(languageRef.current).lines.cancelled)
       const timer = setTimeout(
         () => dispatch({ type: "resume" }),
         RESUME_AFTER_CANCEL_MS
@@ -394,7 +389,7 @@ export function useSafetyMonitor() {
         untilMs: current.atMs + SNOOZE_AFTER_CANCEL_MS,
         why: "alerting",
       })
-      void say(OUTCOME_LINES.escalated[languageRef.current])
+      void say(languagePack(languageRef.current).lines.escalated)
       const timer = setTimeout(
         () => dispatch({ type: "resume" }),
         RESUME_AFTER_ESCALATION_MS
@@ -470,13 +465,12 @@ export function useSafetyMonitor() {
       const status = await getIncidentStatus(escalatedServerId, token)
       if (!status) return
       setServerStatus(status)
+      const lines = languagePack(languageRef.current).lines
       const line =
         status.status === "acknowledged"
-          ? SERVER_OUTCOME_LINES.acknowledged(status.acknowledgedBy ?? "")[
-              languageRef.current
-            ]
+          ? lines.handling(status.acknowledgedBy ?? "")
           : status.status === "unacknowledged"
-            ? SERVER_OUTCOME_LINES.unacknowledged[languageRef.current]
+            ? lines.unacknowledged
             : ""
       if (line && line !== lastSpoken) {
         lastSpoken = line

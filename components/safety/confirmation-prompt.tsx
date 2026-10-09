@@ -14,6 +14,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { getIncident } from "@/lib/safety/incidents"
 import type { OpenIncident } from "@/lib/safety/monitor-machine"
+import { languagePack } from "@/lib/safety/languages"
 import type { Language, ReplyIntent } from "@/lib/safety/types"
 
 const labels: Record<
@@ -53,7 +54,7 @@ export function ConfirmationPrompt({
       className="grid gap-4 rounded-[12px] border-2 border-[#e2b78e] bg-[#2a1c14] p-5 text-center"
       role="alertdialog"
       aria-labelledby="confirmation-question"
-      dir={language === "ar" ? "rtl" : "ltr"}
+      dir={languagePack(language).direction}
     >
       <h2
         className="m-0 text-xl font-semibold text-[#fbe3cc]"

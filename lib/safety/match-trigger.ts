@@ -8,8 +8,8 @@
  * server (the rules-based fallback classifier reuses matchPhrase).
  */
 import { INCIDENTS, SEVERITY_RANK } from "./incidents"
-import { SUPPORTED_LANGUAGES } from "./region"
-import { containsPhrase, normalizeText } from "./normalize-text"
+import { LANGUAGE_PACKS, LANGUAGES } from "./languages"
+import { containsPhrase, normalizeText, removePhrase } from "./normalize-text"
 import type {
   IncidentDefinition,
   Language,
@@ -65,14 +65,15 @@ function isTriggered(
 
 /**
  * Speech matches, one per incident: the longest matching phrase (the best
- * quote), or else a word pair such as "heart" + "hurts".
+ * quote), or else a word pair such as "heart" + "hurts". The language's
+ * everyday phrases ("I fell asleep") are removed first.
  */
 export function matchPhrase(
   text: string,
   language: Language,
   incidents: IncidentDefinition[] = INCIDENTS
 ): TriggerMatch[] {
-  const normalized = normalizeText(text)
+  const normalized = withoutIgnoredPhrases(normalizeText(text), language)
   if (!normalized) return []
 
   return incidents.flatMap((incident) => {
@@ -96,13 +97,20 @@ export function matchPhrase(
   })
 }
 
+function withoutIgnoredPhrases(normalized: string, language: Language): string {
+  return LANGUAGE_PACKS[language].ignorePhrases.reduce(
+    (remaining, phrase) => removePhrase(remaining, normalizeText(phrase)),
+    normalized
+  )
+}
+
 /** Returns "first second" when one word from each list is in the text, else undefined. */
 function matchWordPair(
   normalizedText: string,
   pair: [string[], string[]] | undefined
 ): string | undefined {
   if (!pair) return undefined
-  const words = new Set(normalizedText.split(" "))
+  const words = new Set(normalizedText.split(/[\s|]+/))
   const [first, second] = pair.map((list) =>
     list.find((word) => words.has(normalizeText(word)))
   )
@@ -118,9 +126,7 @@ export function matchPhraseInAnyLanguage(
   text: string,
   incidents: IncidentDefinition[] = INCIDENTS
 ): TriggerMatch[] {
-  return SUPPORTED_LANGUAGES.flatMap((language) =>
-    matchPhrase(text, language, incidents)
-  )
+  return LANGUAGES.flatMap((language) => matchPhrase(text, language, incidents))
 }
 
 /** When several incidents match at once, act on the most severe; ties go to config order. */

@@ -9,6 +9,7 @@
 import { z } from "zod"
 
 import { INCIDENTS } from "./incidents"
+import { LANGUAGES, type Language } from "./languages"
 import type { IncidentTypeId } from "./types"
 
 const incidentIds = INCIDENTS.map((incident) => incident.id) as [
@@ -16,7 +17,7 @@ const incidentIds = INCIDENTS.map((incident) => incident.id) as [
   ...IncidentTypeId[],
 ]
 
-export const LanguageSchema = z.enum(["en", "ar"])
+export const LanguageSchema = z.enum(LANGUAGES as [Language, ...Language[]])
 export const IncidentTypeIdSchema = z.enum(incidentIds)
 export const SeveritySchema = z.enum(["critical", "high", "medium"])
 

@@ -24,7 +24,7 @@ create table if not exists incidents (
   incident_type text not null,
   severity text not null check (severity in ('critical', 'high', 'medium')),
   status text not null check (status in ('confirming', 'cancelled', 'escalating', 'acknowledged', 'unacknowledged')),
-  language text not null check (language in ('en', 'ar')),
+  language text not null,
   created_at_ms bigint not null,
   confirm_deadline_ms bigint not null,
   escalation_started_at_ms bigint,
@@ -43,6 +43,10 @@ create table if not exists incidents (
 alter table contacts add column if not exists email text;
 alter table contacts add column if not exists email_status text
   check (email_status in ('pending', 'failed'));
+
+-- Languages come from the app's language packs, so the database does not
+-- limit them (this removes the en/ar-only check from earlier versions).
+alter table incidents drop constraint if exists incidents_language_check;
 
 -- The scheduler looks up open incidents by status every 30 seconds.
 create index if not exists incidents_status_idx on incidents (status);

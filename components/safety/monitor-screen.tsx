@@ -33,12 +33,11 @@ import { DEFAULT_PROFILE } from "@/lib/client/monitor-settings"
 import { listContacts, type IncidentStatusView } from "@/lib/client/safety-api"
 import { getIncident, INCIDENTS } from "@/lib/safety/incidents"
 import { EMERGENCY_NUMBERS } from "@/lib/safety/region"
+import { LANGUAGES, languagePack } from "@/lib/safety/languages"
 import type { Language, TriggerMatch } from "@/lib/safety/types"
 
 const cardClass =
   "grid gap-3 rounded-2xl border border-[#263d54] bg-[#0e1b2a] p-5"
-
-const languageNames: Record<Language, string> = { en: "English", ar: "العربية" }
 
 export function MonitorScreen() {
   const monitor = useSafetyMonitor()
@@ -283,7 +282,7 @@ function MainScreen({
                   : "—"}
               </span>
               <span dir="auto">
-                Words ({languageNames[monitor.language]}):{" "}
+                Words ({languagePack(monitor.language).nativeName}):{" "}
                 {monitor.lastHeard ? `“${monitor.lastHeard}”` : "—"}
               </span>
             </div>
@@ -387,14 +386,14 @@ function LanguageSwitch({
       role="group"
       aria-label="Language spoken at home"
     >
-      {(Object.keys(languageNames) as Language[]).map((language) => (
+      {LANGUAGES.map((language) => (
         <button
           className={`rounded-md px-2.5 py-1 text-xs ${value === language ? "bg-[#16334a] text-[#72def2]" : "text-[#8fa2b6] hover:text-[#d6e2ee]"}`}
           aria-pressed={value === language}
           key={language}
           onClick={() => onChange(language)}
         >
-          {languageNames[language]}
+          {languagePack(language).nativeName}
         </button>
       ))}
     </div>
@@ -453,7 +452,7 @@ function speechStatus(
   listening: boolean
 ): { text: string; tone: "good" | "warn" | "bad" | "neutral" } {
   if (!listening) return { text: "Paused", tone: "neutral" }
-  if (status === "on") return { text: languageNames[language], tone: "good" }
+  if (status === "on") return { text: languagePack(language).nativeName, tone: "good" }
   if (status === "unsupported") return { text: "Use Chrome", tone: "bad" }
   if (status === "blocked") return { text: "Blocked", tone: "bad" }
   return { text: "Starting…", tone: "warn" }

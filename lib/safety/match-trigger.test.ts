@@ -92,9 +92,9 @@ describe("matchPhrase", () => {
   })
 
   it("quotes the longest matching phrase", () => {
-    expect(matchPhrase("please help me", "en")[0]).toMatchObject({
+    expect(matchPhrase("somebody help me", "en")[0]).toMatchObject({
       incidentId: "help_call",
-      phrase: "help me",
+      phrase: "somebody help",
     })
   })
 

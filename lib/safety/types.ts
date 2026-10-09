@@ -6,7 +6,9 @@
  * devices (components/alexa/types.ts). Nothing describes incidents.
  */
 
-export type Language = "en" | "ar"
+import type { Language } from "./languages"
+
+export type { Language }
 
 /** critical: alert everyone at once. high / medium: alert contacts one by one. */
 export type Severity = "critical" | "high" | "medium"
@@ -37,12 +39,13 @@ export type IncidentDefinition = {
   description: string
   severity: Severity
   triggerSounds: SoundTrigger[]
+  /** Filled in from the language packs (lib/safety/languages). */
   triggerPhrases: Record<Language, string[]>
   /**
    * Looser speech trigger: fires when a word from the first list and a word from
    * the second list are both said, in any order ("my HEAD really HURTS").
    */
-  triggerWordPairs?: Record<Language, [string[], string[]]>
+  triggerWordPairs: Record<Language, [string[], string[]] | undefined>
   /** Must be a yes/no "are you okay?" question: "yes" is read as "I'm fine". */
   confirmationQuestion: Record<Language, string>
   /** Whether the trigger is first checked by transcription + the language model, per trigger source. */
