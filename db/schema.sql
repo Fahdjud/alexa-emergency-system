@@ -38,6 +38,12 @@ create table if not exists incidents (
   acknowledged_at_ms bigint
 );
 
+-- Optional email alerts (AWS SNS). Added after the first release, so they are
+-- separate statements that also upgrade an existing table.
+alter table contacts add column if not exists email text;
+alter table contacts add column if not exists email_status text
+  check (email_status in ('pending', 'failed'));
+
 -- The scheduler looks up open incidents by status every 30 seconds.
 create index if not exists incidents_status_idx on incidents (status);
 create index if not exists incidents_created_idx on incidents (created_at_ms);

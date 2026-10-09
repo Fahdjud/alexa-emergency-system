@@ -11,7 +11,7 @@
  */
 
 export type EnvGroup =
-  "AI providers" | "Alerts" | "Database" | "Generated secrets"
+  "AI providers" | "Alerts" | "Email alerts" | "Database" | "Generated secrets"
 export type BuildStep = "PR 6" | "PR 7" | "PR 8"
 export type CheckStatus = "ok" | "warning" | "missing" | "invalid"
 
@@ -140,6 +140,35 @@ function checkSupabaseSecretKey(value: string): Outcome {
   )
 }
 
+const SNS_TOPIC_ARN =
+  /^arn:aws(?:-cn|-us-gov)?:sns:([^:]+):\d{12}:([A-Za-z0-9_-]{1,256})$/
+
+function checkAwsRegion(value: string): Outcome {
+  return /^[a-z]{2}(-gov)?-[a-z]+-\d$/.test(value)
+    ? ok
+    : invalid("Expected a region code such as us-east-1 or me-central-1.")
+}
+
+function checkSnsTopicArn(value: string): Outcome {
+  return SNS_TOPIC_ARN.test(value)
+    ? ok
+    : invalid(
+        "Expected the topic ARN, e.g. arn:aws:sns:us-east-1:123456789012:alerts. Copy it from SNS -> Topics."
+      )
+}
+
+function checkAwsAccessKeyId(value: string): Outcome {
+  return /^(AKIA|ASIA)[A-Z0-9]{16}$/.test(value)
+    ? ok
+    : invalid('Access key IDs are 20 characters starting with "AKIA".')
+}
+
+function checkAwsSecretKey(value: string): Outcome {
+  return /^[A-Za-z0-9/+=]{40}$/.test(value)
+    ? ok
+    : invalid("Secret access keys are 40 characters long.")
+}
+
 export const ENV_VARS: EnvVarSpec[] = [
   {
     name: "STT_PROVIDER",
@@ -192,6 +221,34 @@ export const ENV_VARS: EnvVarSpec[] = [
     neededFrom: "PR 7",
     optional: "outside-production",
     check: checkBaseUrl,
+  },
+  {
+    name: "AWS_REGION",
+    group: "Email alerts",
+    neededFrom: "PR 7",
+    optional: "always",
+    check: checkAwsRegion,
+  },
+  {
+    name: "AWS_SNS_TOPIC_ARN",
+    group: "Email alerts",
+    neededFrom: "PR 7",
+    optional: "always",
+    check: checkSnsTopicArn,
+  },
+  {
+    name: "AWS_ACCESS_KEY_ID",
+    group: "Email alerts",
+    neededFrom: "PR 7",
+    optional: "always",
+    check: checkAwsAccessKeyId,
+  },
+  {
+    name: "AWS_SECRET_ACCESS_KEY",
+    group: "Email alerts",
+    neededFrom: "PR 7",
+    optional: "always",
+    check: checkAwsSecretKey,
   },
   {
     name: "STORE_PROVIDER",
@@ -284,6 +341,7 @@ export function checkEnvironment(env: Env): EnvReport {
     ...findPublicLeaks(env),
     ...findReusedSecrets(env),
     ...findSupabaseProjectMismatch(env),
+    ...findIncompleteEmailSetup(env),
   ]
 
   return {
@@ -319,6 +377,28 @@ function findReusedSecrets(env: Env): string[] {
     else seen.set(value, name)
   }
   return problems
+}
+
+/** Email alerts need all four AWS settings, and the topic must be in AWS_REGION. */
+function findIncompleteEmailSetup(env: Env): string[] {
+  const names = [
+    "AWS_REGION",
+    "AWS_SNS_TOPIC_ARN",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+  ]
+  const missing = names.filter((name) => !env[name])
+  if (missing.length === names.length) return []
+  if (missing.length > 0)
+    return [
+      `Email alerts are half set up: also set ${missing.join(", ")} (or clear all four AWS settings).`,
+    ]
+  const topicRegion = SNS_TOPIC_ARN.exec(env.AWS_SNS_TOPIC_ARN ?? "")?.[1]
+  if (topicRegion && topicRegion !== env.AWS_REGION)
+    return [
+      `AWS_REGION is ${env.AWS_REGION}, but the SNS topic is in ${topicRegion}. Set AWS_REGION=${topicRegion}.`,
+    ]
+  return []
 }
 
 /** Legacy service_role keys name their project; catch a key pasted from a different project. */

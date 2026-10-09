@@ -4,13 +4,14 @@
  *
  * Why this file exists: the SNS layer only ran from the demo's "simulate
  * fall" button. This adapter lets real escalations from the safety monitor
- * send the same email, alongside the Telegram alerts. SNS sends one message
+ * send the same email, alongside the Telegram alerts, and lets the setup
+ * screen sign a contact's email up to the topic. SNS sends one message
  * to the whole topic, so the email has no per-person "I'm handling it" link;
  * Telegram keeps doing that. Email is off unless AWS_SNS_TOPIC_ARN is set.
  */
 import "server-only"
 
-import { sendEmergencyAlert } from "@/lib/aws/sns"
+import { sendEmergencyAlert, subscribeTrustedContact } from "@/lib/aws/sns"
 import { getIncident } from "@/lib/safety/incidents"
 
 import { alertText } from "./alert-message"
@@ -27,4 +28,21 @@ export async function emailIncident(incident: IncidentRecord): Promise<void> {
     message: alertText(incident, { reminder: false }),
     occurredAt: new Date(incident.createdAtMs).toISOString(),
   })
+}
+
+/**
+ * Signs an address up to the SNS topic. AWS then emails them a link they must
+ * click once before they receive alerts. Never throws: the result is saved as
+ * the contact's email status.
+ */
+export async function signUpForEmail(
+  email: string
+): Promise<"pending" | "failed"> {
+  try {
+    await subscribeTrustedContact(email)
+    return "pending"
+  } catch (error) {
+    console.error("Email sign-up failed", error)
+    return "failed"
+  }
 }

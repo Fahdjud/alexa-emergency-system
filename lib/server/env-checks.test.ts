@@ -173,3 +173,41 @@ describe("checkEnvironment", () => {
     ).toEqual({ "PR 6": true, "PR 7": true, "PR 8": false })
   })
 })
+
+describe("email alert settings", () => {
+  const aws = {
+    AWS_REGION: "us-east-1",
+    AWS_SNS_TOPIC_ARN: "arn:aws:sns:us-east-1:123456789012:home-alerts",
+    AWS_ACCESS_KEY_ID: "AKIAFAKEFAKEFAKEFAKE",
+    AWS_SECRET_ACCESS_KEY: "f".repeat(40),
+  }
+
+  it("is optional, but all four must be set together", () => {
+    expect(checkEnvironment(valid).problems).toEqual([])
+    expect(checkEnvironment({ ...valid, ...aws }).problems).toEqual([])
+    expect(
+      checkEnvironment({ ...valid, ...aws, AWS_SECRET_ACCESS_KEY: undefined })
+        .problems
+    ).toEqual([
+      "Email alerts are half set up: also set AWS_SECRET_ACCESS_KEY (or clear all four AWS settings).",
+    ])
+  })
+
+  it("catches a topic from another region and a pasted console URL", () => {
+    expect(
+      checkEnvironment({ ...valid, ...aws, AWS_REGION: "eu-west-1" }).problems
+    ).toEqual([
+      "AWS_REGION is eu-west-1, but the SNS topic is in us-east-1. Set AWS_REGION=us-east-1.",
+    ])
+    expect(
+      resultFor(
+        {
+          ...aws,
+          AWS_SNS_TOPIC_ARN:
+            "https://us-east-1.console.aws.amazon.com/sns/v3/home#/topic/arn",
+        },
+        "AWS_SNS_TOPIC_ARN"
+      )?.status
+    ).toBe("invalid")
+  })
+})

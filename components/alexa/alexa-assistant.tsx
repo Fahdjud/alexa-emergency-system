@@ -7,6 +7,7 @@ import { getDemoReply, suggestions } from "./data"
 import { DevicesPanel } from "./devices-panel"
 import { MessageComposer } from "./message-composer"
 import type { ChatMessage } from "./types"
+import { deviceTokenStore } from "@/lib/client/monitor-settings"
 import type { EmergencyEvent } from "@/types/emergency"
 
 type SpeechResult = {
@@ -117,9 +118,16 @@ export function AlexaAssistant() {
       "No response to either safety check. Sending a possible emergency alert to your trusted contact…"
     )
     try {
+      // The household code saved by the /monitor setup in this browser.
+      const deviceToken = deviceTokenStore.read()
+      if (!deviceToken)
+        throw new Error("Set up the monitor in this browser first")
       const response = await fetch("/api/emergency", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${deviceToken}`,
+        },
         body: JSON.stringify(active.event),
       })
       const result = await response.json()
@@ -136,13 +144,15 @@ export function AlexaAssistant() {
         "alexa",
         "The possible emergency alert was sent to SNS for delivery to your confirmed trusted contact. Inbox delivery is not verified by this demo."
       )
-    } catch {
+    } catch (error) {
       if (emergencyRef.current !== active) return
       active.stage = "failed"
       setEmergencyStage("failed")
       appendMessage(
         "alexa",
-        "I couldn’t confirm that the alert was published. Delivery status is unknown. This demo will not retry automatically."
+        error instanceof Error && error.message.startsWith("Set up")
+          ? "I can’t send alerts from this browser yet. Open /monitor and enter the household code first."
+          : "I couldn’t confirm that the alert was published. Delivery status is unknown. This demo will not retry automatically."
       )
     }
   }

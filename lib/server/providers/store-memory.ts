@@ -35,9 +35,19 @@ export function createMemoryStore(): IncidentStore {
         priority,
         telegramChatId: null,
         inviteCode: newInviteCode(),
+        email: null,
+        emailStatus: null,
       }
       contacts.set(contact.id, contact)
       return contact
+    },
+
+    async setContactEmail(id, email, emailStatus) {
+      const contact = contacts.get(id)
+      if (!contact) return null
+      const updated = { ...contact, email, emailStatus }
+      contacts.set(id, updated)
+      return updated
     },
 
     async linkTelegramChat(inviteCode, chatId) {
