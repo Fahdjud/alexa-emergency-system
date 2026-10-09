@@ -11,7 +11,12 @@ import "server-only"
 
 import type { MonitorStatus } from "@/lib/safety/monitor-health"
 import type { Classification } from "@/lib/safety/schemas"
-import type { IncidentTypeId, Language, Severity } from "@/lib/safety/types"
+import type {
+  ContactResponse,
+  IncidentTypeId,
+  Language,
+  Severity,
+} from "@/lib/safety/types"
 
 import { memoryStore } from "./store-memory"
 
@@ -62,6 +67,8 @@ export type IncidentRecord = {
   snippetPath: string | null
   acknowledgedByContactId: string | null
   acknowledgedAtMs: number | null
+  /** What the acknowledging contact said: handling it, on the way, or calling. */
+  acknowledgedResponse: ContactResponse | null
 }
 
 export type NewIncident = Pick<

@@ -12,14 +12,14 @@ import {
   MonitorProfileSchema,
   type MonitorProfile,
 } from "@/lib/safety/profile"
-import type { Language } from "@/lib/safety/types"
+import { isLanguage, type Language } from "@/lib/safety/languages"
 
 import { createStoredValue } from "./stored-value"
 
 export const languageStore = createStoredValue<Language>(
   "safety-monitor-language",
   "en",
-  (value): value is Language => value === "en" || value === "ar"
+  isLanguage
 )
 
 export const deviceTokenStore = createStoredValue<string>(

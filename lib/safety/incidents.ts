@@ -8,22 +8,29 @@
  *
  * How to read an entry:
  * - triggerSounds: YAMNet class names, spelled exactly as YAMNet spells them.
- * - triggerPhrases: matched as whole words after normalising the text
- *   ("I've" = "I have", Arabic diacritics and letter variants ignored), so
- *   list each phrase once.
- * - triggerWordPairs: a looser speech trigger. It fires when one word from
- *   each list is said, e.g. a body part and a pain word ("my heart hurts").
- * - confirmationQuestion: always an "are you okay?" question, so "yes" means
- *   "I'm fine" and "no" means "help".
+ * - Phrases, word pairs and the "Are you okay?" question are per language, so
+ *   they live in the language packs (lib/safety/languages) and are added to
+ *   each entry below.
  * - aiCheck: whether a trigger from that source is first transcribed and
  *   checked by the language model (to filter out the TV, for example). Falls,
  *   alarms and glass go straight to the question: there is nothing useful to
  *   transcribe, and speed matters more.
  * - No entry diagnoses anything. Labels describe what was heard or said.
  */
-import type { IncidentDefinition, IncidentTypeId, Severity } from "./types"
+import { LANGUAGE_PACKS, LANGUAGES } from "./languages"
+import type {
+  IncidentDefinition,
+  IncidentTypeId,
+  Language,
+  Severity,
+} from "./types"
 
-export const INCIDENTS: IncidentDefinition[] = [
+type LanguageNeutral = Omit<
+  IncidentDefinition,
+  "triggerPhrases" | "triggerWordPairs" | "confirmationQuestion"
+>
+
+const DEFINITIONS: LanguageNeutral[] = [
   {
     id: "smoke_co_alarm",
     label: "Smoke or carbon monoxide alarm",
@@ -34,19 +41,6 @@ export const INCIDENTS: IncidentDefinition[] = [
       { label: "Smoke detector, smoke alarm", minScore: 0.3 },
       { label: "Fire alarm", minScore: 0.3 },
     ],
-    triggerPhrases: {
-      en: [
-        "there is a fire",
-        "something is burning",
-        "i smell smoke",
-        "i smell gas",
-      ],
-      ar: ["حريق", "فيه دخان", "ريحة غاز", "ريحة دخان"],
-    },
-    confirmationQuestion: {
-      en: "I can hear a smoke or gas alarm. Are you okay?",
-      ar: "أسمع صوت إنذار دخان أو غاز. هل أنت بخير؟",
-    },
     aiCheck: { sound: false, speech: true },
     notifyOnCancel: true,
   },
@@ -57,73 +51,6 @@ export const INCIDENTS: IncidentDefinition[] = [
       "Someone saying they cannot breathe, their chest or head hurts, or they feel dizzy.",
     severity: "critical",
     triggerSounds: [],
-    triggerPhrases: {
-      en: [
-        "i cannot breathe",
-        "cannot breathe",
-        "my chest hurts",
-        "chest pain",
-        "i feel dizzy",
-        "i am dizzy",
-        "i feel faint",
-        "i am going to faint",
-        "i am going to pass out",
-      ],
-      ar: [
-        "ما أقدر أتنفس",
-        "مو قادر أتنفس",
-        "صدري يوجعني",
-        "ألم في صدري",
-        "دايخ",
-        "دايخة",
-        "أحس بدوخة",
-        "بيغمى علي",
-        "راح يغمى علي",
-      ],
-    },
-    triggerWordPairs: {
-      en: [
-        [
-          "heart",
-          "chest",
-          "head",
-          "stomach",
-          "belly",
-          "tummy",
-          "arm",
-          "neck",
-          "back",
-        ],
-        [
-          "hurt",
-          "hurts",
-          "hurting",
-          "pain",
-          "painful",
-          "ache",
-          "aches",
-          "aching",
-          "sore",
-        ],
-      ],
-      ar: [
-        ["قلبي", "صدري", "راسي", "رأسي", "بطني", "ذراعي", "رقبتي", "ظهري"],
-        [
-          "يوجعني",
-          "توجعني",
-          "يألمني",
-          "تألمني",
-          "يعورني",
-          "تعورني",
-          "وجع",
-          "ألم",
-        ],
-      ],
-    },
-    confirmationQuestion: {
-      en: "It sounds like you may not feel well. Are you okay?",
-      ar: "يبدو أنك لا تشعر بخير. هل أنت بخير؟",
-    },
     aiCheck: { sound: false, speech: true },
     notifyOnCancel: false,
   },
@@ -137,31 +64,6 @@ export const INCIDENTS: IncidentDefinition[] = [
       { label: "Thump, thud", minScore: 0.4 },
       { label: "Smash, crash", minScore: 0.4 },
     ],
-    triggerPhrases: {
-      en: [
-        "i have fallen",
-        "i fell",
-        "i fell down",
-        "i cannot get up",
-        "i slipped",
-        "i tripped",
-        "help me up",
-      ],
-      ar: [
-        "طحت",
-        "وقعت",
-        "سقطت",
-        "انزلقت",
-        "تزحلقت",
-        "ما أقدر أقوم",
-        "مو قادر أقوم",
-        "قوموني",
-      ],
-    },
-    confirmationQuestion: {
-      en: "It sounded like something fell. Are you okay?",
-      ar: "سمعت صوت سقوط. هل أنت بخير؟",
-    },
     aiCheck: { sound: false, speech: true },
     notifyOnCancel: false,
   },
@@ -172,41 +74,6 @@ export const INCIDENTS: IncidentDefinition[] = [
       "Someone calling “help”, or asking to call family or an ambulance.",
     severity: "high",
     triggerSounds: [],
-    triggerPhrases: {
-      en: [
-        "help",
-        "help me",
-        "somebody help",
-        "call my daughter",
-        "call my son",
-        "call my wife",
-        "call my husband",
-        "call an ambulance",
-        "call 911",
-        "call 997",
-      ],
-      ar: [
-        "ساعدوني",
-        "ساعدني",
-        "ساعدونا",
-        "أنقذوني",
-        "أنقذني",
-        "الحقوني",
-        "الحقني",
-        "النجدة",
-        "أحد يساعدني",
-        "اتصلوا ببنتي",
-        "اتصل على بنتي",
-        "اتصل على ولدي",
-        "اتصلوا بولدي",
-        "اتصلوا بالإسعاف",
-        "اتصل بالإسعاف",
-      ],
-    },
-    confirmationQuestion: {
-      en: "I heard someone ask for help. Are you okay?",
-      ar: "سمعت أحدًا يطلب المساعدة. هل أنت بخير؟",
-    },
     aiCheck: { sound: false, speech: true },
     notifyOnCancel: false,
   },
@@ -220,11 +87,6 @@ export const INCIDENTS: IncidentDefinition[] = [
       { label: "Crying, sobbing", minScore: 0.4, sustainedMs: 8000 },
       { label: "Wail, moan", minScore: 0.4, sustainedMs: 8000 },
     ],
-    triggerPhrases: { en: [], ar: [] },
-    confirmationQuestion: {
-      en: "I heard screaming or crying. Are you okay?",
-      ar: "سمعت صراخًا أو بكاءً. هل أنت بخير؟",
-    },
     aiCheck: { sound: true, speech: true },
     notifyOnCancel: false,
   },
@@ -237,15 +99,28 @@ export const INCIDENTS: IncidentDefinition[] = [
       { label: "Shatter", minScore: 0.3 },
       { label: "Glass", minScore: 0.5 },
     ],
-    triggerPhrases: { en: [], ar: [] },
-    confirmationQuestion: {
-      en: "I heard glass breaking. Are you okay?",
-      ar: "سمعت صوت زجاج ينكسر. هل أنت بخير؟",
-    },
     aiCheck: { sound: false, speech: true },
     notifyOnCancel: false,
   },
 ]
+
+/** Adds each language's phrases and question from its pack. */
+function withWords(incident: LanguageNeutral): IncidentDefinition {
+  const words = (language: Language) =>
+    LANGUAGE_PACKS[language].incidents[incident.id]
+  const byLanguage = <T>(pick: (language: Language) => T) =>
+    Object.fromEntries(
+      LANGUAGES.map((language) => [language, pick(language)])
+    ) as Record<Language, T>
+  return {
+    ...incident,
+    triggerPhrases: byLanguage((language) => words(language).phrases),
+    triggerWordPairs: byLanguage((language) => words(language).wordPairs),
+    confirmationQuestion: byLanguage((language) => words(language).question),
+  }
+}
+
+export const INCIDENTS: IncidentDefinition[] = DEFINITIONS.map(withWords)
 
 export function getIncident(id: IncidentTypeId): IncidentDefinition {
   const incident = INCIDENTS.find((entry) => entry.id === id)

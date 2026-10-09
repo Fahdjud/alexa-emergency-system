@@ -1,6 +1,6 @@
 /*
  * /ack/[token]: the page a contact opens from an alert. It shows what happened
- * and has an "I'm handling it" button.
+ * and lets them answer: on my way, calling now, or handling it.
  *
  * Why this file exists: contacts need one tap to stop the escalation and let
  * the others know. Opening the page changes nothing (link previews open it
@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button"
 import { getIncident } from "@/lib/safety/incidents"
 import { EMERGENCY_NUMBERS } from "@/lib/safety/region"
 import { verifyAckToken } from "@/lib/server/ack-token"
+import { RESPONSE_BUTTONS } from "@/lib/server/alert-message"
 import { requireEnv } from "@/lib/server/env"
 import { getStore } from "@/lib/server/providers/store"
+import type { ContactResponse } from "@/lib/safety/types"
 
 export const metadata: Metadata = {
   title: "Safety alert",
@@ -60,12 +62,11 @@ export default async function AckPage({
         </Row>
       </dl>
 
-      {incident.status === "acknowledged" ? (
+      {incident.status === "acknowledged" &&
+      incident.acknowledgedByContactId !== claims.contactId ? (
         <p className="m-0 rounded-md bg-[#15301f] p-3 text-[#b9ecc8]">
-          {incident.acknowledgedByContactId === claims.contactId
-            ? "Thank you, you are handling this."
-            : `${nameOf(incident.acknowledgedByContactId)} is handling this.`}
-          {done ? " The others have been told." : ""}
+          {nameOf(incident.acknowledgedByContactId)} is{" "}
+          {responsePhrase(incident.acknowledgedResponse)}.
         </p>
       ) : incident.status === "cancelled" ? (
         <p className="m-0 rounded-md bg-[#15301f] p-3 text-[#b9ecc8]">
@@ -74,14 +75,32 @@ export default async function AckPage({
       ) : (
         <form action="/api/ack" method="post" className="grid gap-2">
           <input type="hidden" name="token" value={token} />
-          <Button
-            className="h-12 bg-[#00c8f4] text-base font-semibold text-[#06131c] hover:bg-[#59ddf5]"
-            type="submit"
-          >
-            I&apos;m handling it / سأتولى الأمر
-          </Button>
+          {incident.status === "acknowledged" && (
+            <p className="m-0 rounded-md bg-[#15301f] p-3 text-[#b9ecc8]">
+              Thank you: they know you are{" "}
+              {responsePhrase(incident.acknowledgedResponse)}.
+              {done ? " The others have been told." : ""} You can change your
+              answer below.
+            </p>
+          )}
+          {(["on-my-way", "calling", "handling"] as const).map((response) => (
+            <Button
+              className={
+                incident.acknowledgedResponse === response
+                  ? "h-12 bg-[#00c8f4] text-base font-semibold text-[#06131c] hover:bg-[#59ddf5]"
+                  : "h-12 border border-[#263c53] bg-[#101e2d] text-base font-semibold text-[#d4e0ec] hover:bg-[#14283b]"
+              }
+              key={response}
+              name="response"
+              value={response}
+              type="submit"
+            >
+              {RESPONSE_BUTTONS[response]}
+            </Button>
+          ))}
           <p className="m-0 text-xs text-[#a7adb2]">
-            This stops the alerts to the other contacts.
+            Answering stops the alerts to the other contacts, and the monitor
+            tells them at home.
           </p>
         </form>
       )}
@@ -93,6 +112,12 @@ export default async function AckPage({
       </p>
     </Shell>
   )
+}
+
+function responsePhrase(response: ContactResponse | null): string {
+  if (response === "on-my-way") return "on the way"
+  if (response === "calling") return "calling them"
+  return "handling it"
 }
 
 /** Checks the signature and expiry. Reading the page never acknowledges anything. */

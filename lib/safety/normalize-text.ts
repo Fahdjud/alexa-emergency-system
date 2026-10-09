@@ -18,7 +18,10 @@ const ENGLISH_CONTRACTIONS: [RegExp, string][] = [
   [/\b(\w+)'ve\b/g, "$1 have"],
   [/\b(\w+)'re\b/g, "$1 are"],
   [/\b(\w+)'ll\b/g, "$1 will"],
-  [/\b(it|that|there|what|everything)'s\b/g, "$1 is"],
+  [
+    /\b(it|that|there|what|everything|something|someone|somebody|nothing|he|she|who)'s\b/g,
+    "$1 is",
+  ],
 ]
 
 export function normalizeText(text: string): string {
@@ -38,6 +41,18 @@ function normalizeArabic(text: string): string {
     .replace(/[أإآ]/g, "ا")
     .replace(/ى/g, "ي")
     .replace(/ة/g, "ه")
+}
+
+/**
+ * Replaces every whole-word occurrence of the phrase with a "|" break, so
+ * nothing can match across the gap. Both must be normalised.
+ */
+export function removePhrase(
+  normalizedText: string,
+  normalizedPhrase: string
+): string {
+  if (!normalizedPhrase) return normalizedText
+  return ` ${normalizedText} `.split(` ${normalizedPhrase} `).join(" | ").trim()
 }
 
 /** True when every word of the phrase appears, in order and adjacent, in the text. Both must be normalised. */

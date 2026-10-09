@@ -1,6 +1,6 @@
 /*
- * POST /api/ack: a contact confirms they are handling an incident (the button
- * on the /ack/[token] page).
+ * POST /api/ack: a contact answers an incident from the /ack/[token] page:
+ * "on-my-way", "calling" or "handling" (the form's `response` field).
  *
  * Why this file exists: acknowledging stops escalation, so it happens only on
  * an explicit button press (POST), never when a link is merely opened. Chat
@@ -10,6 +10,7 @@
 import { verifyAckToken } from "@/lib/server/ack-token"
 import { escalationDeps } from "@/lib/server/escalation-deps"
 import { acknowledgeIncident } from "@/lib/server/escalation-runner"
+import { CONTACT_RESPONSES, type ContactResponse } from "@/lib/safety/types"
 
 export async function POST(request: Request) {
   const form = await request.formData().catch(() => null)
@@ -25,6 +26,12 @@ export async function POST(request: Request) {
       { status: 400 }
     )
 
-  await acknowledgeIncident(deps, claims)
+  const requested = form?.get("response")
+  const response = CONTACT_RESPONSES.find((value) => value === requested)
+  await acknowledgeIncident(
+    deps,
+    claims,
+    (response ?? "handling") satisfies ContactResponse
+  )
   return Response.redirect(new URL(`/ack/${token}?done=1`, request.url), 303)
 }

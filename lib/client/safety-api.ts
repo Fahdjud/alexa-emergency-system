@@ -9,7 +9,11 @@
  */
 import { encodeWav } from "@/lib/audio/wav"
 import type { Classification } from "@/lib/safety/schemas"
-import type { Language, TriggerMatch } from "@/lib/safety/types"
+import type {
+  ContactResponse,
+  Language,
+  TriggerMatch,
+} from "@/lib/safety/types"
 
 const TIMEOUT_MS = 15_000
 
@@ -25,6 +29,8 @@ export type IncidentReport = {
 export type IncidentStatusView = {
   status: string
   acknowledgedBy: string | null
+  /** How the contact answered; null for older records. */
+  response: ContactResponse | null
 }
 
 export type ContactView = {

@@ -9,6 +9,7 @@
  */
 import { getIncident } from "@/lib/safety/incidents"
 import { EMERGENCY_NUMBERS } from "@/lib/safety/region"
+import type { ContactResponse } from "@/lib/safety/types"
 
 import type { IncidentRecord } from "./providers/store"
 
@@ -29,17 +30,58 @@ export function alertText(
     reason,
     `Time: ${formatRiyadhTime(incident.createdAtMs)}`,
     "",
-    "Tap the button if you are handling it, so others are not alerted. / اضغط الزر إذا كنت ستتولى الأمر.",
+    "Tap a button to answer. The others stop being alerted, and they hear it at home. / اضغط زرًا للرد.",
     `Emergency / الطوارئ: ${EMERGENCY_NUMBERS.unified} (ambulance / إسعاف ${EMERGENCY_NUMBERS.ambulance})`,
   ]
   return lines.filter((line) => line !== null).join("\n")
 }
 
+/** The reply buttons on an alert, in the order shown. */
+export const RESPONSE_BUTTONS: Record<ContactResponse, string> = {
+  "on-my-way": "🚗 On my way / في الطريق",
+  calling: "📞 Calling now / أتصل الآن",
+  handling: "✋ I'm handling it / سأتولى الأمر",
+}
+
+/** Told to the other contacts when someone answers. */
 export function acknowledgedText(
   incident: IncidentRecord,
-  contactName: string
+  contactName: string,
+  response: ContactResponse = "handling"
 ): string {
-  return `✅ ${contactName} is handling the ${getIncident(incident.incidentType).label.toLowerCase()} alert. / ${contactName} يتولى الأمر.`
+  const alert = getIncident(incident.incidentType).label.toLowerCase()
+  switch (response) {
+    case "on-my-way":
+      return `🚗 ${contactName} is on the way (${alert} alert). / ${contactName} في الطريق.`
+    case "calling":
+      return `📞 ${contactName} is calling them now (${alert} alert). / ${contactName} يتصل الآن.`
+    case "handling":
+      return `✅ ${contactName} is handling the ${alert} alert. / ${contactName} يتولى الأمر.`
+  }
+}
+
+/** Sent back to the contact who tapped a reply button. */
+export function responseReceivedText(response: ContactResponse): string {
+  switch (response) {
+    case "on-my-way":
+      return "Thank you. They will hear that you are on the way, and the others have been told. / شكرًا، أبلغناهم أنك في الطريق."
+    case "calling":
+      return "Thank you. They will hear that you are calling; please call them now. / شكرًا، اتصل عليهم الآن."
+    case "handling":
+      return "Thank you. The others have been told you are handling it. / شكرًا، أبلغنا البقية."
+  }
+}
+
+export function alreadyHandledText(contactName: string): string {
+  return `${contactName} is already responding to this alert. / ${contactName} يتولى الأمر.`
+}
+
+export function alertClosedText(
+  status: IncidentRecord["status"] | null
+): string {
+  return status === "cancelled"
+    ? "They said they are fine. No action needed. / قال إنه بخير."
+    : "This alert is no longer active. / هذا التنبيه لم يعد نشطًا."
 }
 
 export function unacknowledgedText(incident: IncidentRecord): string {

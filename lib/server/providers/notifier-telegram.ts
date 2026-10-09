@@ -9,7 +9,7 @@
  */
 import "server-only"
 
-import type { Notifier } from "./notifier"
+import type { Notifier, OutgoingMessage } from "./notifier"
 
 const TIMEOUT_MS = 10_000
 
@@ -25,13 +25,7 @@ export function createTelegramNotifier(): Notifier {
       await callTelegram("sendMessage", {
         chat_id: chatId,
         text: message.text,
-        reply_markup: message.action
-          ? {
-              inline_keyboard: [
-                [{ text: message.action.label, url: message.action.url }],
-              ],
-            }
-          : undefined,
+        reply_markup: keyboardFor(message),
       })
 
       if (message.audio) {
@@ -43,6 +37,36 @@ export function createTelegramNotifier(): Notifier {
       }
     },
   }
+}
+
+/** Reply buttons two per row (they are short), else the link button. */
+function keyboardFor(message: OutgoingMessage) {
+  if (message.replies?.length) {
+    const rows: { text: string; callback_data: string }[][] = []
+    message.replies.forEach((reply, index) => {
+      if (index % 2 === 0) rows.push([])
+      rows.at(-1)!.push({ text: reply.label, callback_data: reply.data })
+    })
+    return { inline_keyboard: rows }
+  }
+  if (message.action)
+    return {
+      inline_keyboard: [
+        [{ text: message.action.label, url: message.action.url }],
+      ],
+    }
+  return undefined
+}
+
+/** Confirms a button tap (Telegram shows the text briefly and stops the spinner). */
+export async function answerTelegramButton(
+  callbackQueryId: string,
+  text: string
+): Promise<void> {
+  await callTelegram("answerCallbackQuery", {
+    callback_query_id: callbackQueryId,
+    text: text.slice(0, 200),
+  })
 }
 
 /** Sends a plain message to any chat; used by the webhook to greet new contacts. */

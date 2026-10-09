@@ -72,6 +72,7 @@ export function createMemoryStore(): IncidentStore {
         snippetPath: null,
         acknowledgedByContactId: null,
         acknowledgedAtMs: null,
+        acknowledgedResponse: null,
       }
       incidents.set(incident.id, incident)
       return incident

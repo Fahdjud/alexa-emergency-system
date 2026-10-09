@@ -23,6 +23,7 @@ import type {
   MonitorProfile,
   Sensitivity,
 } from "@/lib/safety/profile"
+import { LANGUAGES, languagePack } from "@/lib/safety/languages"
 import type { Language } from "@/lib/safety/types"
 
 type Props = {
@@ -179,13 +180,13 @@ export function SetupWizard({
               Language people speak at home
             </span>
             <div className="grid grid-cols-2 gap-2">
-              {(["en", "ar"] as const).map((value) => (
+              {LANGUAGES.map((value) => (
                 <Choice
                   key={value}
                   selected={lang === value}
                   onClick={() => setLang(value)}
                 >
-                  {value === "en" ? "English" : "العربية"}
+                  {languagePack(value).nativeName}
                 </Choice>
               ))}
             </div>
@@ -333,9 +334,7 @@ export function SetupWizard({
                   ? "None yet: nobody can be alerted"
                   : `${contacts.length} added, ${connected} connected`}
               </Summary>
-              <Summary term="Language">
-                {lang === "en" ? "English" : "العربية"}
-              </Summary>
+              <Summary term="Language">{languagePack(lang).nativeName}</Summary>
             </dl>
             {contacts.length > 0 && connected === 0 && (
               <Notice>
