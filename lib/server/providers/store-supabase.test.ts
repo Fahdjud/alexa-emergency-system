@@ -80,4 +80,37 @@ describe("supabase store", () => {
       )
     ).rejects.toThrow("not supported")
   })
+
+  it("still acknowledges on a database without the reply column", async () => {
+    const fetch = vi
+      .fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            code: "PGRST204",
+            message:
+              "Could not find the 'ack_response' column of 'incidents' in the schema cache",
+          },
+          { status: 400 }
+        )
+      )
+      .mockResolvedValueOnce(
+        Response.json([{ ...row, status: "acknowledged" }])
+      )
+    const store = createSupabaseStore(
+      createClient("https://example.supabase.co", "test-key", {
+        auth: { persistSession: false },
+        global: { fetch },
+      })
+    )
+    const updated = await store.updateIncidentIf(
+      "inc-1",
+      { status: ["escalating"] },
+      { status: "acknowledged", acknowledgedResponse: "on-my-way" }
+    )
+    expect(updated?.status).toBe("acknowledged")
+    expect(JSON.parse(String(fetch.mock.calls[1][1]?.body))).toEqual({
+      status: "acknowledged",
+    })
+  })
 })

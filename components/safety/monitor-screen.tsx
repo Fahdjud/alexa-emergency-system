@@ -452,7 +452,8 @@ function speechStatus(
   listening: boolean
 ): { text: string; tone: "good" | "warn" | "bad" | "neutral" } {
   if (!listening) return { text: "Paused", tone: "neutral" }
-  if (status === "on") return { text: languagePack(language).nativeName, tone: "good" }
+  if (status === "on")
+    return { text: languagePack(language).nativeName, tone: "good" }
   if (status === "unsupported") return { text: "Use Chrome", tone: "bad" }
   if (status === "blocked") return { text: "Blocked", tone: "bad" }
   return { text: "Starting…", tone: "warn" }
@@ -466,8 +467,12 @@ function carefulnessText(carefulness: string | undefined): string {
 
 function escalationProgress(status: IncidentStatusView | null): ReactNode {
   if (!status) return "Alerting your contacts…"
-  if (status.status === "acknowledged")
-    return `${status.acknowledgedBy ?? "A contact"} is handling it.`
+  if (status.status === "acknowledged") {
+    const name = status.acknowledgedBy ?? "A contact"
+    if (status.response === "on-my-way") return `🚗 ${name} is on the way.`
+    if (status.response === "calling") return `📞 ${name} is calling you now.`
+    return `${name} is handling it.`
+  }
   if (status.status === "unacknowledged")
     return `Nobody has answered yet. Call ${EMERGENCY_NUMBERS.unified} if you can.`
   return "Alerting your contacts one by one until someone responds. The monitor keeps listening."

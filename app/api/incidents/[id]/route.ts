@@ -1,6 +1,7 @@
 /*
  * GET /api/incidents/[id]: the incident's current status, for the monitor
- * page to show "Sara is handling it" or "Nobody answered, call 911".
+ * page to say "Sara is on the way", "Sara is calling you" or "Nobody
+ * answered, call 911".
  *
  * Why this file exists: escalation runs on the server, so the monitor has to
  * ask how it is going. Returns only what the screen needs. Device-token
@@ -28,7 +29,11 @@ export async function GET(
       )?.name ?? null)
     : null
   return Response.json(
-    { status: incident.status, acknowledgedBy },
+    {
+      status: incident.status,
+      acknowledgedBy,
+      response: incident.acknowledgedResponse,
+    },
     { headers: { "Cache-Control": "no-store" } }
   )
 }

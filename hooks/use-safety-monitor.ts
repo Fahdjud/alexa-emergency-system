@@ -466,9 +466,14 @@ export function useSafetyMonitor() {
       if (!status) return
       setServerStatus(status)
       const lines = languagePack(languageRef.current).lines
+      const name = status.acknowledgedBy ?? ""
       const line =
         status.status === "acknowledged"
-          ? lines.handling(status.acknowledgedBy ?? "")
+          ? status.response === "on-my-way"
+            ? lines.onTheWay(name)
+            : status.response === "calling"
+              ? lines.calling(name)
+              : lines.handling(name)
           : status.status === "unacknowledged"
             ? lines.unacknowledged
             : ""

@@ -44,6 +44,10 @@ alter table contacts add column if not exists email text;
 alter table contacts add column if not exists email_status text
   check (email_status in ('pending', 'failed'));
 
+-- How the acknowledging contact answered (added after the first release).
+alter table incidents add column if not exists ack_response text
+  check (ack_response in ('handling', 'on-my-way', 'calling'));
+
 -- Languages come from the app's language packs, so the database does not
 -- limit them (this removes the en/ar-only check from earlier versions).
 alter table incidents drop constraint if exists incidents_language_check;

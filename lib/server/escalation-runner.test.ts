@@ -5,6 +5,8 @@ import { verifyAckToken } from "./ack-token"
 import {
   acknowledgeIncident,
   answerIncident,
+  decodeReply,
+  encodeReply,
   runEscalationTick,
   type EscalationDeps,
 } from "./escalation-runner"
@@ -94,8 +96,12 @@ describe("escalation", () => {
       claims
     )
     expect(acknowledged).toMatchObject({
-      status: "acknowledged",
-      acknowledgedByContactId: son.id,
+      outcome: "acknowledged",
+      incident: {
+        status: "acknowledged",
+        acknowledgedByContactId: son.id,
+        acknowledgedResponse: "handling",
+      },
     })
     expect(sent.at(-1)).toMatchObject({ to: "Daughter" })
     expect(sent.at(-1)!.message.text).toContain("Son is handling")
@@ -180,6 +186,94 @@ describe("escalation", () => {
     })
     await answerIncident(deps(START), incident.id, "no-answer")
     expect(sent.map((s) => s.to).sort()).toEqual(["Daughter", "Son"])
+  })
+})
+
+describe("contact replies", () => {
+  it("offers one-tap replies that name the incident", async () => {
+    const { incident, sent, deps } = await setup()
+    await answerIncident(deps(START), incident.id, "help")
+    const data = sent[0].message.replies!.map((reply) => reply.data)
+    expect(data.map(decodeReply)).toEqual([
+      { response: "on-my-way", incidentId: incident.id },
+      { response: "calling", incidentId: incident.id },
+      { response: "handling", incidentId: incident.id },
+    ])
+    for (const value of data)
+      expect(new TextEncoder().encode(value).length).toBeLessThanOrEqual(64)
+  })
+
+  it("stops the alerts and tells the others who is on the way", async () => {
+    const { store, incident, daughter, son, sent, deps } = await setup({
+      incident: { incidentType: "medical_distress", severity: "critical" },
+    })
+    await answerIncident(deps(START), incident.id, "help")
+    const before = sent.length
+    const result = await acknowledgeIncident(
+      deps(START + MINUTE),
+      { incidentId: incident.id, contactId: daughter.id },
+      "on-my-way"
+    )
+    expect(result.outcome).toBe("acknowledged")
+    expect(sent.slice(before)).toEqual([
+      {
+        to: "Son",
+        message: { text: expect.stringContaining("Daughter is on the way") },
+      },
+    ])
+    expect((await store.getIncident(incident.id))?.acknowledgedResponse).toBe(
+      "on-my-way"
+    )
+
+    await runEscalationTick(deps(START + 10 * MINUTE))
+    expect(sent).toHaveLength(before + 1) // no more alerts
+
+    // The same contact can change their answer; someone else cannot take over.
+    const changed = await acknowledgeIncident(
+      deps(START + 2 * MINUTE),
+      { incidentId: incident.id, contactId: daughter.id },
+      "calling"
+    )
+    expect(changed.incident?.acknowledgedResponse).toBe("calling")
+    expect(sent.at(-1)?.message.text).toContain("Daughter is calling them now")
+    expect(
+      await acknowledgeIncident(
+        deps(START + 3 * MINUTE),
+        { incidentId: incident.id, contactId: son.id },
+        "on-my-way"
+      )
+    ).toMatchObject({ outcome: "already-handled", by: "Daughter" })
+  })
+
+  it("does not reopen an incident the person cancelled", async () => {
+    const { incident, daughter, deps } = await setup()
+    await answerIncident(deps(START), incident.id, "fine")
+    expect(
+      await acknowledgeIncident(
+        deps(START),
+        { incidentId: incident.id, contactId: daughter.id },
+        "on-my-way"
+      )
+    ).toMatchObject({
+      outcome: "not-active",
+      incident: { status: "cancelled" },
+    })
+  })
+
+  it("rejects malformed reply data", () => {
+    expect(decodeReply(encodeReply("calling", "abc-123"))).toEqual({
+      response: "calling",
+      incidentId: "abc-123",
+    })
+    for (const bad of [
+      "",
+      "x:abc",
+      "w:",
+      "w:a:b",
+      "w:../../etc",
+      "w:" + "a".repeat(65),
+    ])
+      expect(decodeReply(bad), bad).toBeNull()
   })
 })
 

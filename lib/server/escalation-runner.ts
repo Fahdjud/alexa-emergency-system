@@ -21,16 +21,14 @@ import {
   nextEscalationAction,
 } from "@/lib/safety/escalation-policy"
 import { getIncident } from "@/lib/safety/incidents"
+import { CONTACT_RESPONSES, type ContactResponse } from "@/lib/safety/types"
 
-import {
-  ACK_TOKEN_LIFETIME_MS,
-  signAckToken,
-  type AckClaims,
-} from "./ack-token"
+import { ACK_TOKEN_LIFETIME_MS, signAckToken } from "./ack-token"
 import {
   acknowledgedText,
   alertText,
   cancelledNoteText,
+  RESPONSE_BUTTONS,
   unacknowledgedText,
 } from "./alert-message"
 import type { Notifier, OutgoingMessage } from "./providers/notifier"
@@ -144,6 +142,10 @@ export async function advanceEscalation(
             label: "I'm handling it / سأتولى الأمر",
             url: ackUrl(deps, incident.id, contact.id),
           },
+          replies: CONTACT_RESPONSES_IN_BUTTON_ORDER.map((response) => ({
+            label: RESPONSE_BUTTONS[response],
+            data: encodeReply(response, incident.id),
+          })),
           audio: firstAlert && audio ? audio : undefined,
         }
       }
@@ -167,33 +169,103 @@ export async function advanceEscalation(
   return incident // wait, or stopped
 }
 
-/** A contact tapped "I'm handling it". Stops escalation and tells the others. */
+export type AckResult =
+  | { outcome: "acknowledged"; incident: IncidentRecord }
+  /** Someone else answered first; their name is given. */
+  | { outcome: "already-handled"; incident: IncidentRecord; by: string }
+  /** Cancelled, still being confirmed, or gone. */
+  | { outcome: "not-active"; incident: IncidentRecord | null }
+
+/**
+ * A contact answered an alert ("on my way", "calling", "I'm handling it").
+ * The first answer stops the escalation and tells the others; the same
+ * contact may change their answer later (on the way, then calling).
+ */
 export async function acknowledgeIncident(
   deps: EscalationDeps,
-  claims: AckClaims
-): Promise<IncidentRecord | null> {
+  { incidentId, contactId }: { incidentId: string; contactId: string },
+  response: ContactResponse = "handling"
+): Promise<AckResult> {
   const contacts = await deps.store.listContacts()
-  const contact = contacts.find((entry) => entry.id === claims.contactId)
-  if (!contact) return null
+  const contact = contacts.find((entry) => entry.id === contactId)
+  if (!contact) return { outcome: "not-active", incident: null }
+  const tellOthers = (incident: IncidentRecord) =>
+    sendToEach(
+      deps,
+      contacts.filter(
+        (entry) => entry.id !== contact.id && deps.notifier.canReach(entry)
+      ),
+      () => ({ text: acknowledgedText(incident, contact.name, response) })
+    )
 
   const acknowledged = await deps.store.updateIncidentIf(
-    claims.incidentId,
+    incidentId,
     { status: ["escalating", "unacknowledged"] },
     {
       status: "acknowledged",
       acknowledgedByContactId: contact.id,
       acknowledgedAtMs: deps.nowMs,
+      acknowledgedResponse: response,
     }
   )
-  if (!acknowledged) return deps.store.getIncident(claims.incidentId)
+  if (acknowledged) {
+    await tellOthers(acknowledged)
+    return { outcome: "acknowledged", incident: acknowledged }
+  }
 
-  const others = contacts.filter(
-    (entry) => entry.id !== contact.id && deps.notifier.canReach(entry)
+  const current = await deps.store.getIncident(incidentId)
+  if (current?.status !== "acknowledged")
+    return { outcome: "not-active", incident: current }
+  if (current.acknowledgedByContactId !== contact.id)
+    return {
+      outcome: "already-handled",
+      incident: current,
+      by:
+        contacts.find((entry) => entry.id === current.acknowledgedByContactId)
+          ?.name ?? "Someone",
+    }
+  if (current.acknowledgedResponse === response)
+    return { outcome: "acknowledged", incident: current }
+
+  const changed = await deps.store.updateIncidentIf(
+    incidentId,
+    { status: ["acknowledged"] },
+    { acknowledgedResponse: response }
   )
-  await sendToEach(deps, others, () => ({
-    text: acknowledgedText(acknowledged, contact.name),
-  }))
-  return acknowledged
+  if (changed) await tellOthers(changed)
+  return { outcome: "acknowledged", incident: changed ?? current }
+}
+
+const CONTACT_RESPONSES_IN_BUTTON_ORDER: ContactResponse[] = [
+  "on-my-way",
+  "calling",
+  "handling",
+]
+
+const REPLY_CODES: Record<ContactResponse, string> = {
+  handling: "h",
+  "on-my-way": "w",
+  calling: "c",
+}
+
+/** Button data for a reply: "w:<incident id>". Telegram allows 64 bytes. */
+export function encodeReply(
+  response: ContactResponse,
+  incidentId: string
+): string {
+  return `${REPLY_CODES[response]}:${incidentId}`
+}
+
+export function decodeReply(
+  data: string
+): { response: ContactResponse; incidentId: string } | null {
+  const [code, incidentId, extra] = data.split(":")
+  const response = CONTACT_RESPONSES.find(
+    (candidate) => REPLY_CODES[candidate] === code
+  )
+  if (!response || !incidentId || extra !== undefined) return null
+  if (!/^[A-Za-z0-9-]{1,64}$/.test(incidentId)) return null
+  return { response, incidentId }
 }
 
 /** One scheduled pass: escalate unanswered questions (e.g. the tab crashed), then advance every escalation. */

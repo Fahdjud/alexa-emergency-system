@@ -16,6 +16,11 @@ export type OutgoingMessage = {
   text: string
   /** Shown as a button. */
   action?: { label: string; url: string }
+  /**
+   * One-tap answers, for channels that support them (Telegram). The data is
+   * sent back to us when tapped; such channels show these instead of `action`.
+   */
+  replies?: { label: string; data: string }[]
   /** The incident's audio snippet, attached when available. */
   audio?: Blob
 }

@@ -10,7 +10,8 @@ teammates can find their way around and the setup can be repeated. The demo at
    audio in memory. Google's YAMNet model runs in the tab and recognises sounds:
    smoke alarm, glass, screams, thuds. Chrome's speech recognition listens for
    phrases in English or Arabic, such as "help me" or "الحقوني". Every incident
-   type is one entry in `lib/safety/incidents.ts`.
+   type is one entry in `lib/safety/incidents.ts`; the words for it are in
+   the language packs (see "Languages" below).
 2. **AI check (server, about $0.003, speech triggers only).** The snippet (15 s
    before + 6 s after) is transcribed by Groq Whisper and classified by Claude
    Haiku 4.5. Only a confident "not an incident" (the TV, for example) skips
@@ -19,12 +20,15 @@ teammates can find their way around and the setup can be repeated. The demo at
    "Help", or no answer within 30 s, escalates. The server also gets its own
    deadline, so a crashed tab still escalates.
 4. **Escalation (server, no AI).** Contacts get Telegram messages with the
-   audio and an "I'm handling it" link:
+   audio and three one-tap answers: **On my way**, **Calling now** and
+   **I'm handling it**. Email contacts get the same text by email.
    - Critical incidents alert everyone at once, every 2 min.
    - High-severity incidents alert one contact at a time, 3 min each.
    - Medium-severity incidents alert one contact at a time, 5 min each.
    - After that, everyone is alerted 3 more times.
-   - The first acknowledgement stops the alerts and tells the others.
+   - The first answer stops the alerts and tells the others ("Sara is on the
+     way"). The monitor says it out loud at home ("Sara is on the way to
+     you"). The same contact can change their answer later.
 5. **Heartbeat.** If the monitor stops checking in for 5 minutes, contact 1 is
    told that nothing is listening.
 
@@ -49,6 +53,36 @@ The answers are saved in the browser. The rules that turn them into
 detection settings are in `lib/safety/profile.ts`. Settings (the gear icon)
 reopens the setup.
 
+### Languages
+
+Everything the assistant listens for or says in a language is one file in
+`lib/safety/languages/` (`en.ts`, `ar.ts`). The Arabic pack is written for
+Saudi and Gulf speech, plus the common Modern Standard Arabic forms.
+
+To add a language (Urdu, Hindi, Tagalog, ...):
+
+1. Copy `en.ts` to `<code>.ts` (the ISO 639-1 code, e.g. `ur`) and have a
+   native speaker translate the phrases, the questions and the spoken lines,
+   and write the test sentences.
+2. Import it in `lib/safety/languages/index.ts` and add it to
+   `LANGUAGE_PACKS`.
+3. Run `pnpm scorecard` and `pnpm test`. The language switch, speech
+   recognition, matching, answers, spoken lines and the AI check pick it up
+   with no other change. (Telegram and email texts to contacts stay in
+   English and Arabic.)
+
+### Accuracy scorecard
+
+`pnpm scorecard` runs each pack's test sentences through the speech rules
+and prints, per language: emergencies caught, everyday sentences wrongly
+flagged, and answers to "Are you okay?" read correctly, with every sentence
+that failed. It measures the keyword layer only; the AI check and the
+question handle the rest (the TV, for example). The test fails if a language
+misses an emergency sentence or flags more than 1 in 5 everyday ones.
+
+When testers find a phrase that was missed, add it to the pack's phrases and
+to its test sentences, so it stays fixed.
+
 Snippets are kept for 7 days (incident cancelled) or 30 days (escalated).
 Incident records are kept for 90 days.
 
@@ -61,6 +95,8 @@ Incident records are kept for 90 days.
      - `cron_secret`: your `CRON_SECRET`
      - `app_base_url`: `https://<your-app>.vercel.app`
    - Run `db/schedule.sql`.
+   - After updates, run `db/schema.sql` again: it is safe to re-run and adds
+     any new columns.
    - To check it is working, run
      `select * from cron.job_run_details order by start_time desc limit 5;`
 2. **Vercel environment variables** (Production)
@@ -84,7 +120,7 @@ Incident records are kept for 90 days.
    - In Vercel, set `AWS_REGION`, `AWS_SNS_TOPIC_ARN`, `AWS_ACCESS_KEY_ID`
      and `AWS_SECRET_ACCESS_KEY`, then redeploy. All four, or none.
    - If you ran `db/schema.sql` before email existed, run it again (it only
-     adds the two email columns).
+     adds the new columns).
    - Add each contact's email on the setup screen. AWS emails them a
      confirmation link they must click once (it may land in spam).
    - When an incident escalates, one email goes to everyone confirmed on the

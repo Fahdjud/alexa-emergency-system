@@ -52,6 +52,7 @@ type IncidentRow = {
   snippet_path: string | null
   acknowledged_by_contact_id: string | null
   acknowledged_at_ms: number | null
+  ack_response: IncidentRecord["acknowledgedResponse"]
 }
 
 let store: IncidentStore | null = null
@@ -142,14 +143,26 @@ export function createSupabaseStore(db: SupabaseClient): IncidentStore {
 
     async updateIncidentIf(id, when, patch) {
       // One UPDATE ... WHERE: Postgres applies it atomically, so only one caller wins.
-      let query = db
-        .from("incidents")
-        .update(incidentPatchToRow(patch))
-        .eq("id", id)
-        .in("status", when.status)
-      if (when.stepsSent !== undefined)
-        query = query.eq("steps_sent", when.stepsSent)
-      const { data, error } = await query.select().maybeSingle()
+      const update = (row: Partial<IncidentRow>) => {
+        let query = db
+          .from("incidents")
+          .update(row)
+          .eq("id", id)
+          .in("status", when.status)
+        if (when.stepsSent !== undefined)
+          query = query.eq("steps_sent", when.stepsSent)
+        return query.select().maybeSingle()
+      }
+      const row = incidentPatchToRow(patch)
+      let { data, error } = await update(row)
+      // A database set up before contact replies existed has no ack_response
+      // column. Acknowledging must still work, so save the rest.
+      if (error?.message.includes("ack_response") && "ack_response" in row) {
+        console.warn("Run db/schema.sql again to store contact replies.")
+        const withoutReply = { ...row }
+        delete withoutReply.ack_response
+        ;({ data, error } = await update(withoutReply))
+      }
       check("update incident", error)
       return data ? incidentFromRow(data as IncidentRow) : null
     },
@@ -298,6 +311,7 @@ function incidentFromRow(row: IncidentRow): IncidentRecord {
     acknowledgedByContactId: row.acknowledged_by_contact_id,
     acknowledgedAtMs:
       row.acknowledged_at_ms === null ? null : Number(row.acknowledged_at_ms),
+    acknowledgedResponse: row.ack_response ?? null,
   }
 }
 
@@ -313,6 +327,7 @@ function incidentPatchToRow(
     snippetPath: "snippet_path",
     acknowledgedByContactId: "acknowledged_by_contact_id",
     acknowledgedAtMs: "acknowledged_at_ms",
+    acknowledgedResponse: "ack_response",
     transcript: "transcript",
     classification: "classification",
   }

@@ -15,7 +15,10 @@ export const consoleNotifier: Notifier = {
     console.info(
       `[alert to ${contact.name}]`,
       message.text,
-      message.action ? `\n[${message.action.label}] ${message.action.url}` : ""
+      message.action ? `\n[${message.action.label}] ${message.action.url}` : "",
+      message.replies
+        ? `\n${message.replies.map((reply) => `[${reply.label}]`).join(" ")}`
+        : ""
     )
   },
 }

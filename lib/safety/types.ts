@@ -82,3 +82,7 @@ export type Contact = {
   /** 1 is alerted first. */
   priority: number
 }
+
+/** How a contact answered an alert: each one stops the alerts to the others. */
+export const CONTACT_RESPONSES = ["handling", "on-my-way", "calling"] as const
+export type ContactResponse = (typeof CONTACT_RESPONSES)[number]
