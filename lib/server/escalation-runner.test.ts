@@ -28,7 +28,11 @@ function recordingNotifier(unreachable: string[] = []) {
 }
 
 async function setup(
-  options: { unreachable?: string[]; incident?: Partial<NewIncident> } = {}
+  options: {
+    unreachable?: string[]
+    incident?: Partial<NewIncident>
+    emailFails?: boolean
+  } = {}
 ) {
   const store: IncidentStore = createMemoryStore()
   const daughter = await store.addContact({ name: "Daughter", priority: 1 })
@@ -44,14 +48,19 @@ async function setup(
     ...options.incident,
   })
   const { notifier, sent } = recordingNotifier(options.unreachable)
+  const emailed: string[] = []
   const deps = (nowMs: number): EscalationDeps => ({
     store,
     notifier,
     nowMs,
     ackSecret: SECRET,
     baseUrl: "https://example.test",
+    emailAlert: async (escalating) => {
+      if (options.emailFails) throw new Error("SNS is down")
+      emailed.push(escalating.id)
+    },
   })
-  return { store, incident, daughter, son, sent, deps }
+  return { store, incident, daughter, son, sent, emailed, deps }
 }
 
 const tokenFrom = (url: string) => url.split("/ack/")[1]
@@ -171,6 +180,28 @@ describe("escalation", () => {
     })
     await answerIncident(deps(START), incident.id, "no-answer")
     expect(sent.map((s) => s.to).sort()).toEqual(["Daughter", "Son"])
+  })
+})
+
+describe("email alerts", () => {
+  it("emails once when escalation starts, not on every step", async () => {
+    const { incident, emailed, deps } = await setup()
+    await answerIncident(deps(START), incident.id, "help")
+    await runEscalationTick(deps(START + 3 * MINUTE))
+    await runEscalationTick(deps(START + 6 * MINUTE))
+    expect(emailed).toEqual([incident.id])
+  })
+
+  it("still alerts on Telegram when email fails", async () => {
+    const { incident, sent, deps } = await setup({ emailFails: true })
+    await answerIncident(deps(START), incident.id, "help")
+    expect(sent.map((s) => s.to)).toEqual(["Daughter"])
+  })
+
+  it("sends no email when the person is fine", async () => {
+    const { incident, emailed, deps } = await setup()
+    await answerIncident(deps(START), incident.id, "fine")
+    expect(emailed).toEqual([])
   })
 })
 

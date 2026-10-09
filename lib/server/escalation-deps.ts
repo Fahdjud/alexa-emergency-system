@@ -8,6 +8,7 @@
 import "server-only"
 
 import { appBaseUrl } from "./app-url"
+import { emailAlertsConfigured, emailIncident } from "./email-alert"
 import { requireEnv } from "./env"
 import type { EscalationDeps } from "./escalation-runner"
 import { getNotifier } from "./providers/notifier"
@@ -20,5 +21,6 @@ export async function escalationDeps(): Promise<EscalationDeps> {
     nowMs: Date.now(),
     ackSecret: requireEnv("ACK_TOKEN_SECRET"),
     baseUrl: appBaseUrl(),
+    emailAlert: emailAlertsConfigured() ? emailIncident : undefined,
   }
 }
