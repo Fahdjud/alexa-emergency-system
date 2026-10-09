@@ -46,6 +46,8 @@ export type EscalationDeps = {
   nowMs: number
   ackSecret: string
   baseUrl: string
+  /** Optional second channel: emails the incident once, when the first alerts go out. */
+  emailAlert?: (incident: IncidentRecord) => Promise<void>
 }
 
 export type Answer = "fine" | "help" | "no-answer"
@@ -122,6 +124,11 @@ export async function advanceEscalation(
       { stepsSent: step + 1 }
     )
     if (!claimed) return deps.store.getIncident(incident.id) // another tick sent it, or it was acknowledged
+
+    if (step === 0 && deps.emailAlert)
+      await deps
+        .emailAlert(claimed)
+        .catch((error) => console.error("Email alert failed", error))
 
     const audio = incident.snippetPath
       ? await deps.store.getSnippet(incident.snippetPath)
