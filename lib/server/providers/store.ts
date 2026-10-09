@@ -24,7 +24,16 @@ export type ContactRecord = {
   telegramChatId: string | null
   /** Used in the t.me invite link that registers the contact's chat. */
   inviteCode: string
+  /** Optional: alerts are also emailed here, through the AWS SNS topic. */
+  email: string | null
+  /**
+   * "pending": signed up to the SNS topic; AWS has emailed them a link they must click once.
+   * "failed": the sign-up call to AWS failed; saving the email again retries it.
+   */
+  emailStatus: EmailStatus | null
 }
+
+export type EmailStatus = "pending" | "failed"
 
 export type IncidentStatus =
   | "confirming" // waiting for the person's answer
@@ -71,6 +80,12 @@ export type UpdateCondition = { status: IncidentStatus[]; stepsSent?: number }
 export interface IncidentStore {
   listContacts(): Promise<ContactRecord[]>
   addContact(input: { name: string; priority: number }): Promise<ContactRecord>
+  /** Sets or clears a contact's email address and sign-up status. Returns the contact, or null for an unknown id. */
+  setContactEmail(
+    id: string,
+    email: string | null,
+    status: EmailStatus | null
+  ): Promise<ContactRecord | null>
   /** Links a Telegram chat to the contact with this invite code. Returns the contact, or null for an unknown code. */
   linkTelegramChat(
     inviteCode: string,

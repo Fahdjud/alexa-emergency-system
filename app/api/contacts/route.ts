@@ -1,6 +1,7 @@
 /*
  * GET /api/contacts: the emergency contacts, in alert order, with their
- * Telegram invite links. POST /api/contacts: adds one ({ name, priority }).
+ * Telegram invite links and email status, and whether email alerts are set up
+ * on this deployment. POST /api/contacts: adds one ({ name, priority }).
  *
  * Why this file exists: escalation needs people to alert, and each person
  * must open their invite link once to connect Telegram. This is the minimal
@@ -9,8 +10,10 @@
  */
 import { z } from "zod"
 
+import { publicView } from "@/lib/server/contact-view"
 import { rejectUnlessDevice } from "@/lib/server/device-token"
-import { getStore, type ContactRecord } from "@/lib/server/providers/store"
+import { emailAlertsConfigured } from "@/lib/server/email-alert"
+import { getStore } from "@/lib/server/providers/store"
 
 const NewContactSchema = z.object({
   name: z.string().trim().min(1).max(60),
@@ -22,7 +25,10 @@ export async function GET(request: Request) {
   if (rejection) return rejection
   const contacts = await (await getStore()).listContacts()
   return Response.json(
-    { contacts: contacts.map(publicView) },
+    {
+      contacts: contacts.map(publicView),
+      emailAlerts: emailAlertsConfigured(),
+    },
     { headers: { "Cache-Control": "no-store" } }
   )
 }
@@ -40,15 +46,4 @@ export async function POST(request: Request) {
     )
   const contact = await (await getStore()).addContact(body.data)
   return Response.json({ contact: publicView(contact) }, { status: 201 })
-}
-
-function publicView(contact: ContactRecord) {
-  const bot = process.env.TELEGRAM_BOT_USERNAME
-  return {
-    id: contact.id,
-    name: contact.name,
-    priority: contact.priority,
-    connected: contact.telegramChatId !== null,
-    inviteLink: bot ? `https://t.me/${bot}?start=${contact.inviteCode}` : null,
-  }
 }

@@ -1,8 +1,12 @@
 import { notifyEmergency } from "@/lib/emergency/notify"
+import { rejectUnlessDevice } from "@/lib/server/device-token"
 
 export const runtime = "nodejs"
 
 export async function POST(request: Request) {
+  // Only this household's devices may send alerts (same code as the monitor).
+  const rejection = rejectUnlessDevice(request)
+  if (rejection) return rejection
   let body
   try {
     body = await request.json()
@@ -47,7 +51,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Emergency notification failed", error)
     return Response.json(
-      { error: "Unable to read trusted contacts" },
+      { error: "Unable to read emergency contacts" },
       { status: 500 }
     )
   }

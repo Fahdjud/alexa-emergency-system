@@ -31,6 +31,8 @@ type ContactRow = {
   priority: number
   telegram_chat_id: string | null
   invite_code: string
+  email: string | null
+  email_status: ContactRecord["emailStatus"]
 }
 
 type IncidentRow = {
@@ -83,6 +85,17 @@ export function createSupabaseStore(db: SupabaseClient): IncidentStore {
         .single()
       check("add contact", error)
       return contactFromRow(data as ContactRow)
+    },
+
+    async setContactEmail(id, email, emailStatus) {
+      const { data, error } = await db
+        .from("contacts")
+        .update({ email, email_status: emailStatus })
+        .eq("id", id)
+        .select()
+        .maybeSingle()
+      check("save contact email", error)
+      return data ? contactFromRow(data as ContactRow) : null
     },
 
     async linkTelegramChat(inviteCode, chatId) {
@@ -258,6 +271,8 @@ function contactFromRow(row: ContactRow): ContactRecord {
     priority: row.priority,
     telegramChatId: row.telegram_chat_id,
     inviteCode: row.invite_code,
+    email: row.email ?? null,
+    emailStatus: row.email_status ?? null,
   }
 }
 

@@ -78,8 +78,20 @@ Incident records are kept for 90 days.
    ```
 
    `.env.local` must hold the same `TELEGRAM_WEBHOOK_SECRET` as Vercel.
-4. **Check:** open `/health`, enter the device token, and confirm everything shows ✅.
-5. **Monitor:** open `/monitor` in Chrome and follow the setup screen.
+4. **Email alerts (optional, AWS SNS)**
+   - In AWS → SNS, create a Standard topic. Create an IAM user that may only
+     `sns:Publish` and `sns:Subscribe` on that topic, and an access key for it.
+   - In Vercel, set `AWS_REGION`, `AWS_SNS_TOPIC_ARN`, `AWS_ACCESS_KEY_ID`
+     and `AWS_SECRET_ACCESS_KEY`, then redeploy. All four, or none.
+   - If you ran `db/schema.sql` before email existed, run it again (it only
+     adds the two email columns).
+   - Add each contact's email on the setup screen. AWS emails them a
+     confirmation link they must click once (it may land in spam).
+   - When an incident escalates, one email goes to everyone confirmed on the
+     topic, with the same text as the Telegram alert. The "I'm handling it"
+     button stays on Telegram.
+5. **Check:** open `/health`, enter the device token, and confirm everything shows ✅.
+6. **Monitor:** open `/monitor` in Chrome and follow the setup screen.
    Add contacts and send each one their invite link; they tap **Start** in
    Telegram. Then click **Start monitoring**.
 
@@ -106,6 +118,7 @@ needed. `instrumentation.ts` runs the escalation tick every 15 s when
 | `lib/server/` | Server only: providers (speech-to-text, classifier, notifier, store), escalation runner, tokens. |
 | `app/api/` | API routes. Every route checks the device token, `CRON_SECRET` or the Telegram secret. |
 | `db/` | Supabase schema and scheduler. |
+| `lib/aws/`, `lib/emergency/` | Email alerts through AWS SNS (sending and topic sign-up). |
 
 Every external service sits behind a small interface in `lib/server/providers/`,
 so swapping a provider means adding one file.

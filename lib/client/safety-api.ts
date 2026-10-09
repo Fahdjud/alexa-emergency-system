@@ -33,6 +33,15 @@ export type ContactView = {
   priority: number
   connected: boolean
   inviteLink: string | null
+  email: string | null
+  /** "pending": AWS emailed them a link to click once. "failed": sign-up failed; save again to retry. */
+  emailStatus: "pending" | "failed" | null
+}
+
+export type ContactList = {
+  contacts: ContactView[]
+  /** Whether this deployment can email alerts (AWS settings present). */
+  emailAlerts: boolean
 }
 
 /** Records the incident on the server. Returns its id. */
@@ -90,13 +99,47 @@ export function getIncidentStatus(
   return call<IncidentStatusView>(`/api/incidents/${incidentId}`, deviceToken)
 }
 
+export function loadContacts(deviceToken: string): Promise<ContactList | null> {
+  return call<ContactList>("/api/contacts", deviceToken)
+}
+
 export async function listContacts(
   deviceToken: string
 ): Promise<ContactView[] | null> {
-  return (
-    (await call<{ contacts: ContactView[] }>("/api/contacts", deviceToken))
-      ?.contacts ?? null
-  )
+  return (await loadContacts(deviceToken))?.contacts ?? null
+}
+
+/** Saves a contact's email and signs it up for email alerts. Returns the error to show, if any. */
+export async function saveContactEmail(
+  contactId: string,
+  email: string,
+  deviceToken: string
+): Promise<{ contact: ContactView | null; error: string | null }> {
+  try {
+    const response = await fetch(`/api/contacts/${contactId}/email`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${deviceToken}`,
+      },
+      body: JSON.stringify({ email }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+    const body = (await response.json().catch(() => ({}))) as {
+      contact?: ContactView
+      error?: string
+    }
+    if (body.contact)
+      return {
+        contact: body.contact,
+        error: response.ok
+          ? null
+          : "Saved, but AWS did not accept the address. Try again.",
+      }
+    return { contact: null, error: body.error ?? "Could not save the email." }
+  } catch {
+    return { contact: null, error: "Could not reach the server." }
+  }
 }
 
 export async function addContact(
