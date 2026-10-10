@@ -1,6 +1,7 @@
 import "server-only"
 
 import {
+  ListSubscriptionsByTopicCommand,
   PublishCommand,
   SNSClient,
   SubscribeCommand,
@@ -74,4 +75,30 @@ export async function publishEmail({
   )
   if (!response.MessageId) throw new Error("SNS did not return a message ID")
   return response.MessageId
+}
+
+/** Every email address that has confirmed its subscription to the topic (lowercase). */
+export async function confirmedEmailSubscribers(): Promise<Set<string>> {
+  const { topicArn } = getAwsEnv()
+  const confirmed = new Set<string>()
+  let nextToken: string | undefined
+  do {
+    const page = await getClient().send(
+      new ListSubscriptionsByTopicCommand({
+        TopicArn: topicArn,
+        NextToken: nextToken,
+      })
+    )
+    for (const subscription of page.Subscriptions ?? []) {
+      // Pending ones read "PendingConfirmation" instead of an ARN.
+      if (
+        subscription.Protocol === "email" &&
+        subscription.Endpoint &&
+        subscription.SubscriptionArn?.startsWith("arn:")
+      )
+        confirmed.add(subscription.Endpoint.toLowerCase())
+    }
+    nextToken = page.NextToken
+  } while (nextToken)
+  return confirmed
 }

@@ -12,7 +12,10 @@ import { z } from "zod"
 
 import { publicView } from "@/lib/server/contact-view"
 import { rejectUnlessDevice } from "@/lib/server/device-token"
-import { emailAlertsConfigured } from "@/lib/server/email-alert"
+import {
+  confirmedEmails,
+  emailAlertsConfigured,
+} from "@/lib/server/email-alert"
 import { getStore } from "@/lib/server/providers/store"
 
 const NewContactSchema = z.object({
@@ -24,9 +27,12 @@ export async function GET(request: Request) {
   const rejection = rejectUnlessDevice(request)
   if (rejection) return rejection
   const contacts = await (await getStore()).listContacts()
+  const confirmed = contacts.some((contact) => contact.email)
+    ? await confirmedEmails()
+    : null
   return Response.json(
     {
-      contacts: contacts.map(publicView),
+      contacts: contacts.map((contact) => publicView(contact, confirmed)),
       emailAlerts: emailAlertsConfigured(),
     },
     { headers: { "Cache-Control": "no-store" } }

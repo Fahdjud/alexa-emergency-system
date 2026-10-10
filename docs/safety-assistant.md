@@ -117,7 +117,9 @@ Incident records are kept for 90 days.
    `.env.local` must hold the same `TELEGRAM_WEBHOOK_SECRET` as Vercel.
 4. **Email alerts (optional, AWS SNS)**
    - In AWS → SNS, create a Standard topic. Create an IAM user that may only
-     `sns:Publish` and `sns:Subscribe` on that topic, and an access key for it.
+     `sns:Publish`, `sns:Subscribe` and `sns:ListSubscriptionsByTopic` on that
+     topic, and an access key for it. (The last one lets the contacts screen
+     show who has confirmed their email.)
    - In Vercel, set `AWS_REGION`, `AWS_SNS_TOPIC_ARN`, `AWS_ACCESS_KEY_ID`
      and `AWS_SECRET_ACCESS_KEY`, then redeploy. All four, or none.
    - If you ran `db/schema.sql` before email existed, run it again (it only
