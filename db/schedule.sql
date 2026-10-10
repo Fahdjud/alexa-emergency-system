@@ -14,6 +14,8 @@
 --      https://<your-app>.vercel.app (no trailing slash). The dashboard keeps
 --      the values out of saved SQL snippets.
 --   3. Run this file. Running it again replaces the job (same name).
+--      Spaces, line breaks and a trailing "/" pasted into the secrets are
+--      ignored, so a stray Enter cannot break the URL or the token.
 --
 -- Check it runs:  select * from cron.job_run_details order by start_time desc limit 5;
 -- Stop it:        select cron.unschedule('safety-escalation-tick');
@@ -23,10 +25,10 @@ select cron.schedule(
   '30 seconds',
   $$
   select net.http_post(
-    url := (select decrypted_secret from vault.decrypted_secrets where name = 'app_base_url') || '/api/escalation/tick',
+    url := (select btrim(decrypted_secret, E' \t\r\n/') from vault.decrypted_secrets where name = 'app_base_url') || '/api/escalation/tick',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+      'Authorization', 'Bearer ' || (select btrim(decrypted_secret, E' \t\r\n') from vault.decrypted_secrets where name = 'cron_secret')
     ),
     body := '{}'::jsonb,
     timeout_milliseconds := 25000
