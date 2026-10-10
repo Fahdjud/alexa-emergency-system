@@ -46,7 +46,13 @@ describe.each(LANGUAGES)("language pack %s", (language) => {
 
   it("says every line, with the contact's name where there is one", () => {
     const { lines } = pack
-    for (const text of [lines.replyHint, lines.cancelled, lines.escalated])
+    for (const text of [
+      lines.replyHint,
+      lines.cancelled,
+      lines.escalated,
+      lines.test,
+      lines.testHeard,
+    ])
       expect(text.trim()).not.toBe("")
     for (const line of [lines.handling, lines.onTheWay, lines.calling])
       expect(line("Sara")).toContain("Sara")

@@ -36,6 +36,8 @@ type Props = {
     deviceToken: string
     language: Language
     profile: MonitorProfile
+    /** Start monitoring with "Test the system" straight away. */
+    runTest?: boolean
   }) => void
   onClose: () => void
 }
@@ -104,8 +106,13 @@ export function SetupWizard({
       incidents: { ...current.incidents, [id]: value },
     }))
 
-  const finish = () =>
-    onSave({ deviceToken: token.trim(), language: lang, profile: answers })
+  const finish = (runTest = false) =>
+    onSave({
+      deviceToken: token.trim(),
+      language: lang,
+      profile: answers,
+      runTest,
+    })
   const watched = INCIDENTS.filter(
     (incident) => answers.incidents[incident.id] !== "off"
   )
@@ -342,9 +349,25 @@ export function SetupWizard({
                 one of them taps Start in Telegram or confirms their email.
               </Notice>
             )}
+            <div className="grid gap-1.5 rounded-lg border border-[#23354a] bg-[#0b1624] p-4">
+              <span className="text-sm font-medium text-[#e8eef5]">
+                Recommended: run a test first
+              </span>
+              <span className="text-sm text-[#a7adb2]">
+                The monitor asks a practice question to check the microphone and
+                voice, and sends your contacts a message marked TEST so they can
+                try the reply buttons. Nothing real is triggered.
+              </span>
+              <Button
+                className="mt-1 justify-self-start bg-[#00c8f4] text-[#06131c] hover:bg-[#59ddf5]"
+                onClick={() => finish(true)}
+              >
+                Start and run a test
+              </Button>
+            </div>
             <Nav
               back={() => setStep(3)}
-              next={{ label: "Start monitoring", onClick: finish }}
+              next={{ label: "Start without a test", onClick: () => finish() }}
             />
           </Step>
         )}

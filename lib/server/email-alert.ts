@@ -35,6 +35,14 @@ export async function emailIncident(
   })
 }
 
+/** One email to everyone on the list (used by the system test). */
+export async function emailEveryone(
+  subject: string,
+  message: string
+): Promise<void> {
+  await publishEmail({ subject, message })
+}
+
 /**
  * Signs an address up to the SNS topic. AWS then emails them a link they must
  * click once before they receive alerts. Never throws: the result is saved as

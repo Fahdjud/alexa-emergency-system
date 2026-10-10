@@ -46,6 +46,7 @@ import {
   reportIncident,
   sendAnswer,
   sendHeartbeat,
+  sendTestAlert,
   type IncidentStatusView,
 } from "@/lib/client/safety-api"
 import {
@@ -103,6 +104,28 @@ export type ActiveAlert = {
   serverId: string | null
 }
 
+export type TestStepId = "microphone" | "voice" | "speech" | "contacts"
+export type TestStep = {
+  status: "waiting" | "running" | "ok" | "warn" | "failed" | "skipped"
+  note: string
+}
+/** "Test the system": each check and how it went. */
+export type SystemTest = {
+  running: boolean
+  steps: Record<TestStepId, TestStep>
+}
+
+/** How long the test waits for a spoken answer, and for a contact to tap a button. */
+const TEST_REPLY_MS = 20_000
+const TEST_CONTACT_MS = 3 * 60_000
+const TEST_POLL_MS = 4000
+
+const RESPONSE_LABELS = {
+  "on-my-way": "On my way",
+  calling: "Calling now",
+  handling: "I'm handling it",
+} as const
+
 export type Detection = {
   id: string
   atMs: number
@@ -135,6 +158,16 @@ export function useSafetyMonitor() {
   const incidentsRef = useRef(incidents)
   const carefulnessRef = useRef(activeProfile.carefulness)
   const [speechStatus, setSpeechStatus] = useState<SpeechListenerStatus>("off")
+  const [systemTest, setSystemTest] = useState<SystemTest | null>(null)
+  /** While a test runs, speech is its answer, never a trigger. */
+  const testRunning = useRef(false)
+  const testReply = useRef<
+    ((reply: { text: string; intent: ReplyIntent } | null) => void) | null
+  >(null)
+  /** Bumped to cancel a running test. */
+  const testRun = useRef(0)
+  const audioStatusRef = useRef(audio.status)
+  const speechStatusRef = useRef<SpeechListenerStatus>("off")
   const [lastHeard, setLastHeard] = useState("")
   const [dialogue, setDialogue] = useState<DialogueLine[]>([])
   const [detections, setDetections] = useState<Detection[]>([])
@@ -271,6 +304,12 @@ export function useSafetyMonitor() {
   const handleTranscript = useCallback(
     (text: string, isFinal: boolean) => {
       setLastHeard(text)
+      if (testRunning.current) {
+        if (!isFinal || !testReply.current) return
+        const intent = interpretReply(text)
+        if (intent !== "unclear") testReply.current({ text, intent })
+        return
+      }
       const nowMs = Date.now()
 
       if (stateRef.current.phase === "confirming") {
@@ -510,6 +549,186 @@ export function useSafetyMonitor() {
     if (stateRef.current.phase === "escalated") dispatch({ type: "resume" })
   }, [])
 
+  useEffect(() => {
+    audioStatusRef.current = audio.status
+    speechStatusRef.current = speechStatus
+  }, [audio.status, speechStatus])
+
+  const { start: startAudio } = audio
+  /**
+   * "Test the system": checks the microphone, the voice, speech recognition
+   * and (optionally) that contacts get a TEST alert and their answer is heard
+   * here. Only runs while no real alert is in progress.
+   */
+  const runTest = useCallback(
+    async ({ withContacts }: { withContacts: boolean }) => {
+      const phase = stateRef.current.phase
+      if (testRunning.current || (phase !== "idle" && phase !== "listening"))
+        return
+      const run = ++testRun.current
+      const alive = () => testRun.current === run
+      const update = (
+        id: TestStepId,
+        status: TestStep["status"],
+        note = ""
+      ) => {
+        if (!alive()) return
+        setSystemTest((test) =>
+          test
+            ? { ...test, steps: { ...test.steps, [id]: { status, note } } }
+            : test
+        )
+      }
+      const waiting: TestStep = { status: "waiting", note: "" }
+      setSystemTest({
+        running: true,
+        steps: {
+          microphone: waiting,
+          voice: waiting,
+          speech: waiting,
+          contacts: withContacts
+            ? waiting
+            : { status: "skipped", note: "Not sent this time." },
+        },
+      })
+      testRunning.current = true
+
+      try {
+        update("microphone", "running", "Turning on the microphone…")
+        if (audioStatusRef.current !== "on") await startAudio()
+        await waitFor(
+          () => ["on", "error"].includes(audioStatusRef.current),
+          5000
+        )
+        if (!alive()) return
+        if (audioStatusRef.current !== "on") {
+          update(
+            "microphone",
+            "failed",
+            "The microphone did not start. Allow microphone access for this site in Chrome, then try again."
+          )
+          for (const id of ["voice", "speech", "contacts"] as const)
+            update(id, "skipped", "Needs the microphone.")
+          return
+        }
+        update("microphone", "ok", "The microphone is on.")
+
+        const language = languageRef.current
+        const lines = languagePack(language).lines
+        update("voice", "running", "Speaking…")
+        await waitFor(() => speechStatusRef.current !== "off", 5000)
+        await say(
+          `${lines.test} ${getIncident("fall").confirmationQuestion[language]} ${lines.replyHint}`
+        )
+        if (!alive()) return
+        update(
+          "voice",
+          "ok",
+          "The question was spoken. If you did not hear it, turn the volume up."
+        )
+
+        if (speechStatusRef.current !== "on") {
+          update(
+            "speech",
+            "failed",
+            speechStatusRef.current === "unsupported"
+              ? "This browser cannot recognise speech. Use Chrome."
+              : "Speech recognition did not start. Allow the microphone, use Chrome, and check the internet connection."
+          )
+        } else {
+          update(
+            "speech",
+            "running",
+            "Answer out loud now, for example “I'm fine”."
+          )
+          const reply = await new Promise<{
+            text: string
+            intent: ReplyIntent
+          } | null>((resolve) => {
+            testReply.current = resolve
+            setTimeout(() => resolve(null), TEST_REPLY_MS)
+          })
+          testReply.current = null
+          if (!alive()) return
+          if (reply) {
+            update(
+              "speech",
+              "ok",
+              `Heard “${reply.text}”, understood as ${reply.intent === "fine" ? "“I'm fine”" : "“help”"}.`
+            )
+            await say(lines.testHeard)
+          } else {
+            update(
+              "speech",
+              "failed",
+              "Nothing was understood in 20 seconds. Check the language switch matches what you speak, move closer, and try again."
+            )
+          }
+        }
+
+        if (!withContacts || !alive()) return
+        update("contacts", "running", "Sending a TEST alert to your contacts…")
+        const token = deviceTokenStore.read()
+        const sent = await sendTestAlert(language, token)
+        if (!alive()) return
+        if ("error" in sent) return update("contacts", "failed", sent.error)
+        const reached = [...sent.sentTo, ...(sent.emailed ? ["email"] : [])]
+        if (reached.length === 0)
+          return update(
+            "contacts",
+            "failed",
+            "No contact is connected yet. Open Settings → Contacts and send the invites."
+          )
+        update(
+          "contacts",
+          "running",
+          `Sent to ${reached.join(", ")}. Ask one of them to tap a button in the TEST message…`
+        )
+        const deadline = Date.now() + TEST_CONTACT_MS
+        while (alive() && Date.now() < deadline) {
+          await sleep(TEST_POLL_MS)
+          const status = await getIncidentStatus(sent.id, token)
+          if (!alive() || status?.status !== "acknowledged") continue
+          const name = status.acknowledgedBy ?? "A contact"
+          const response = status.response ?? "handling"
+          await say(
+            response === "on-my-way"
+              ? lines.onTheWay(name)
+              : response === "calling"
+                ? lines.calling(name)
+                : lines.handling(name)
+          )
+          return update(
+            "contacts",
+            "ok",
+            `${name} answered “${RESPONSE_LABELS[response]}”, and it was spoken here.`
+          )
+        }
+        update(
+          "contacts",
+          "warn",
+          `Sent to ${reached.join(", ")}, but nobody answered within 3 minutes. Check they received it.`
+        )
+      } finally {
+        if (alive()) {
+          testRunning.current = false
+          testReply.current = null
+          setSystemTest((test) => (test ? { ...test, running: false } : test))
+        }
+      }
+    },
+    [say, startAudio]
+  )
+
+  /** Stops a running test and hides the results. */
+  const closeTest = useCallback(() => {
+    testRun.current++
+    testRunning.current = false
+    testReply.current?.(null)
+    testReply.current = null
+    setSystemTest(null)
+  }, [])
+
   const stop = useCallback(() => {
     stopSpeaking()
     audio.stop()
@@ -543,5 +762,18 @@ export function useSafetyMonitor() {
     stop,
     answer,
     dismissAlert,
+    systemTest,
+    runTest,
+    closeTest,
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Resolves when the condition holds or the time runs out (whichever is first). */
+async function waitFor(condition: () => boolean, timeoutMs: number) {
+  const deadline = Date.now() + timeoutMs
+  while (!condition() && Date.now() < deadline) await sleep(100)
 }

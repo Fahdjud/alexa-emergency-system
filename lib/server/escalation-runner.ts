@@ -313,7 +313,8 @@ async function sendToEach(
   )
 }
 
-function ackUrl(
+/** A signed link to the answer page; contactId ANY_CONTACT for email (the page asks who is answering). */
+export function ackUrl(
   deps: EscalationDeps,
   incidentId: string,
   contactId: string

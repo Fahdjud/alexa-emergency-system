@@ -24,6 +24,7 @@ import {
 import { ConversationThread } from "@/components/alexa/conversation"
 import { ConfirmationPrompt } from "@/components/safety/confirmation-prompt"
 import { SetupWizard } from "@/components/safety/setup-wizard"
+import { SystemTestCard } from "@/components/safety/system-test"
 import { Button } from "@/components/ui/button"
 import type { ClassifierStatus } from "@/hooks/use-sound-triggers"
 import { useSafetyMonitor, type Detection } from "@/hooks/use-safety-monitor"
@@ -42,6 +43,8 @@ const cardClass =
 export function MonitorScreen() {
   const monitor = useSafetyMonitor()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** Set by "Start and run a test" at the end of setup. */
+  const [testAfterSetup, setTestAfterSetup] = useState(false)
 
   if (!monitor.deviceToken || !monitor.profile || settingsOpen) {
     return (
@@ -51,11 +54,12 @@ export function MonitorScreen() {
         profile={monitor.profile ?? DEFAULT_PROFILE}
         canClose={Boolean(monitor.deviceToken && monitor.profile)}
         onClose={() => setSettingsOpen(false)}
-        onSave={({ deviceToken, language, profile }) => {
+        onSave={({ deviceToken, language, profile, runTest }) => {
           monitor.setDeviceToken(deviceToken)
           monitor.setLanguage(language)
           monitor.saveProfile(profile)
           setSettingsOpen(false)
+          setTestAfterSetup(Boolean(runTest))
         }}
       />
     )
@@ -65,6 +69,8 @@ export function MonitorScreen() {
     <MainScreen
       monitor={monitor}
       onOpenSettings={() => setSettingsOpen(true)}
+      testAfterSetup={testAfterSetup}
+      onTestStarted={() => setTestAfterSetup(false)}
     />
   )
 }
@@ -74,11 +80,20 @@ type Monitor = ReturnType<typeof useSafetyMonitor>
 function MainScreen({
   monitor,
   onOpenSettings,
+  testAfterSetup,
+  onTestStarted,
 }: {
   monitor: Monitor
   onOpenSettings: () => void
+  testAfterSetup: boolean
+  onTestStarted: () => void
 }) {
-  const { audio, state } = monitor
+  const { audio, state, runTest } = monitor
+  useEffect(() => {
+    if (!testAfterSetup) return
+    onTestStarted()
+    void runTest({ withContacts: true })
+  }, [testAfterSetup, onTestStarted, runTest])
   const listening = audio.status === "on"
   const [showDetails, setShowDetails] = useState(false)
   const connectedContacts = useConnectedContacts(monitor.deviceToken)
@@ -205,6 +220,13 @@ function MainScreen({
             tone="neutral"
           />
         </div>
+
+        <SystemTestCard
+          test={monitor.systemTest}
+          disabled={state.phase !== "idle" && state.phase !== "listening"}
+          onRun={(options) => void monitor.runTest(options)}
+          onClose={monitor.closeTest}
+        />
 
         <section className={cardClass}>
           <h2 className="m-0 text-sm font-semibold text-[#d4e0ec]">

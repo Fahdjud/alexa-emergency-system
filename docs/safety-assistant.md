@@ -50,6 +50,13 @@ The first time `/monitor` opens, a short setup asks:
   - The AI never skips the question when no words were recognised.
 - **Emergency contacts**, with share/copy invite links.
 
+**Test the system** (end of setup, and a card on the monitor screen) checks
+the microphone, that the monitor speaks, and that it understands a spoken
+answer. Optionally it sends contacts a message marked TEST with the same
+reply buttons. Their answer is spoken at home, which proves the whole loop.
+A test never repeats or escalates, can't run during a real alert, and
+can run at most once every 30 seconds.
+
 The answers are saved in the browser. The rules that turn them into
 detection settings are in `lib/safety/profile.ts`. Settings (the gear icon)
 reopens the setup.

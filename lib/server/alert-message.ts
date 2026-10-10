@@ -12,6 +12,7 @@ import { EMERGENCY_NUMBERS } from "@/lib/safety/region"
 import type { ContactResponse } from "@/lib/safety/types"
 
 import type { IncidentRecord } from "./providers/store"
+import { isTestIncident } from "./test-incident"
 
 export function alertText(
   incident: IncidentRecord,
@@ -82,19 +83,54 @@ export function acknowledgedText(
   contactName: string,
   response: ContactResponse = "handling"
 ): string {
-  const alert = getIncident(incident.incidentType).label.toLowerCase()
+  const test = isTestIncident(incident)
+  const alert = test
+    ? "test"
+    : getIncident(incident.incidentType).label.toLowerCase()
+  const prefix = test ? "🧪 TEST · " : ""
   switch (response) {
     case "on-my-way":
-      return `🚗 ${contactName} is on the way (${alert} alert). / ${contactName} في الطريق.`
+      return `${prefix}🚗 ${contactName} is on the way (${alert} alert). / ${contactName} في الطريق.`
     case "calling":
-      return `📞 ${contactName} is calling them now (${alert} alert). / ${contactName} يتصل الآن.`
+      return `${prefix}📞 ${contactName} is calling them now (${alert} alert). / ${contactName} يتصل الآن.`
     case "handling":
-      return `✅ ${contactName} is handling the ${alert} alert. / ${contactName} يتولى الأمر.`
+      return `${prefix}✅ ${contactName} is handling the ${alert} alert. / ${contactName} يتولى الأمر.`
   }
 }
 
+/** The practice alert from "Test the system": clearly not an emergency, same buttons. */
+export function testAlertText(): string {
+  return [
+    "🧪 TEST · تجربة",
+    "This is a test of the home safety monitor. Nobody needs help.",
+    "Please tap a button below to practise answering. The home will hear your answer.",
+    "",
+    "هذي تجربة لجهاز السلامة في البيت، ما أحد يحتاج مساعدة.",
+    "اضغط أي زر تحت للتجربة، وبيسمعون ردك في البيت.",
+  ].join("\n")
+}
+
+export const TEST_EMAIL_SUBJECT = "TEST: home safety monitor check"
+
+export function testEmailText(answerUrl: string): string {
+  return [
+    "🧪 TEST · تجربة",
+    "This is a test of the home safety monitor. Nobody needs help.",
+    "To practise answering, open this link, pick your name and tap a button. The home will hear your answer:",
+    "هذي تجربة، ما أحد يحتاج مساعدة. للتجربة افتح الرابط واختر اسمك واضغط زر:",
+    answerUrl,
+  ].join("\n")
+}
+
 /** Sent back to the contact who tapped a reply button. */
-export function responseReceivedText(response: ContactResponse): string {
+export function responseReceivedText(
+  response: ContactResponse,
+  { test }: { test: boolean } = { test: false }
+): string {
+  return `${test ? "🧪 TEST · " : ""}${responseText(response)}`
+}
+
+function responseText(response: ContactResponse): string {
   switch (response) {
     case "on-my-way":
       return "Thank you. They will hear that you are on the way, and the others have been told. / شكرًا، أبلغناهم أنك في الطريق."

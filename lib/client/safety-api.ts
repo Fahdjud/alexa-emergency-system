@@ -182,6 +182,35 @@ export async function sendHeartbeat(
   return body?.ok === true
 }
 
+export type TestAlertSent = { id: string; sentTo: string[]; emailed: boolean }
+
+/** Sends the practice alert (marked TEST) to every contact. */
+export async function sendTestAlert(
+  language: Language,
+  deviceToken: string
+): Promise<TestAlertSent | { error: string }> {
+  try {
+    const response = await fetch("/api/test-alert", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${deviceToken}`,
+      },
+      body: JSON.stringify({ language }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+    const body = (await response.json().catch(() => ({}))) as
+      TestAlertSent | { error?: string }
+    if (response.ok && "id" in body) return body
+    return {
+      error:
+        ("error" in body && body.error) || "The test alert could not be sent.",
+    }
+  } catch {
+    return { error: "Could not reach the server." }
+  }
+}
+
 /** Checks a device token against the server before it is saved. */
 export async function verifyDeviceToken(
   deviceToken: string
