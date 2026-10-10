@@ -198,6 +198,8 @@ export const en: LanguagePack = {
     onTheWay: (name) => `${name} is on the way to you.`,
     calling: (name) =>
       `${name} is calling you now. Answer your phone if you can.`,
+    test: "This is a test of the safety monitor.",
+    testHeard: "I heard you clearly. The test worked.",
   },
 
   samples: {

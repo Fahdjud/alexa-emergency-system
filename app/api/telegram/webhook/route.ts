@@ -30,6 +30,7 @@ import {
   sendTelegramText,
 } from "@/lib/server/providers/notifier-telegram"
 import { getStore } from "@/lib/server/providers/store"
+import { isTestIncident } from "@/lib/server/test-incident"
 
 type TelegramUpdate = {
   message?: { chat?: { id?: number }; text?: string }
@@ -93,7 +94,9 @@ async function handleButton(
     )
     text =
       result.outcome === "acknowledged"
-        ? responseReceivedText(reply.response)
+        ? responseReceivedText(reply.response, {
+            test: isTestIncident(result.incident),
+          })
         : result.outcome === "already-handled"
           ? alreadyHandledText(result.by)
           : alertClosedText(result.incident?.status ?? null)

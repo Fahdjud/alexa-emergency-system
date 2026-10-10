@@ -254,6 +254,8 @@ export const ar: LanguagePack = {
     handling: (name) => `${name} اطّلع على التنبيه ويتولى الأمر.`,
     onTheWay: (name) => `${name} في الطريق إليك.`,
     calling: (name) => `اتصال من ${name} الآن. رد على الجوال إذا استطعت.`,
+    test: "هذي تجربة لجهاز السلامة.",
+    testHeard: "سمعتك زين. التجربة نجحت.",
   },
 
   samples: {

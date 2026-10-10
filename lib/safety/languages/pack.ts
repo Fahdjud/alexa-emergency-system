@@ -49,6 +49,10 @@ export type LanguagePack = {
     onTheWay: (name: string) => string
     /** A contact tapped "Calling you now". */
     calling: (name: string) => string
+    /** Starts "Test the system", before the practice question. */
+    test: string
+    /** The practice answer was understood. */
+    testHeard: string
   }
 
   /**

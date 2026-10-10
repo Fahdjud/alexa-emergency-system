@@ -17,6 +17,7 @@ import { ANY_CONTACT, verifyAckToken } from "@/lib/server/ack-token"
 import { RESPONSE_BUTTONS } from "@/lib/server/alert-message"
 import { requireEnv } from "@/lib/server/env"
 import { getStore } from "@/lib/server/providers/store"
+import { isTestIncident } from "@/lib/server/test-incident"
 import type { ContactResponse } from "@/lib/safety/types"
 
 export const metadata: Metadata = {
@@ -54,11 +55,14 @@ export default async function AckPage({
   const me = fromEmail
     ? (contacts.find((contact) => contact.id === as)?.id ?? null)
     : claims.contactId
-  const { label } = getIncident(incident.incidentType)
+  const test = isTestIncident(incident)
+  const label = test
+    ? "Test alert: nobody needs help"
+    : getIncident(incident.incidentType).label
   const quote = incident.classification?.supportingQuote
 
   return (
-    <Shell title={label}>
+    <Shell title={label} icon={test ? "🧪" : "🚨"}>
       <dl className="m-0 grid gap-1 text-sm">
         <Row term="Heard">{incident.triggerDescription}</Row>
         {quote && <Row term="Said">“{quote}”</Row>}
@@ -165,15 +169,19 @@ function claimsFromToken(token: string) {
 
 function Shell({
   title,
+  icon = "🚨",
   children,
 }: {
   title: string
+  icon?: string
   children: React.ReactNode
 }) {
   return (
     <main className="min-h-dvh bg-[#0b1421] px-4 py-10 text-[#f3f6fa]">
       <div className="mx-auto grid max-w-md gap-4 rounded-[12px] border border-[#263d54] bg-[#0e1b2a] p-5">
-        <h1 className="m-0 text-xl font-semibold">🚨 {title}</h1>
+        <h1 className="m-0 text-xl font-semibold">
+          {icon} {title}
+        </h1>
         {children}
       </div>
     </main>
