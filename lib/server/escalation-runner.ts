@@ -23,7 +23,7 @@ import {
 import { getIncident } from "@/lib/safety/incidents"
 import { CONTACT_RESPONSES, type ContactResponse } from "@/lib/safety/types"
 
-import { ACK_TOKEN_LIFETIME_MS, signAckToken } from "./ack-token"
+import { ACK_TOKEN_LIFETIME_MS, ANY_CONTACT, signAckToken } from "./ack-token"
 import {
   acknowledgedText,
   alertText,
@@ -44,8 +44,8 @@ export type EscalationDeps = {
   nowMs: number
   ackSecret: string
   baseUrl: string
-  /** Optional second channel: emails the incident once, when the first alerts go out. */
-  emailAlert?: (incident: IncidentRecord) => Promise<void>
+  /** Optional second channel: emails the incident once, when the first alerts go out, with an answer link. */
+  emailAlert?: (incident: IncidentRecord, answerUrl: string) => Promise<void>
 }
 
 export type Answer = "fine" | "help" | "no-answer"
@@ -125,7 +125,7 @@ export async function advanceEscalation(
 
     if (step === 0 && deps.emailAlert)
       await deps
-        .emailAlert(claimed)
+        .emailAlert(claimed, ackUrl(deps, incident.id, ANY_CONTACT))
         .catch((error) => console.error("Email alert failed", error))
 
     const audio = incident.snippetPath

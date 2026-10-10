@@ -10,6 +10,13 @@ import "server-only"
 
 import { createHmac, timingSafeEqual } from "node:crypto"
 
+/**
+ * Stands in for the contact in an email link. Email goes to every contact on
+ * the topic at once, so the link names the incident only and the page asks
+ * who is answering.
+ */
+export const ANY_CONTACT = "any"
+
 /** Links keep working for a day, well past the longest escalation. */
 export const ACK_TOKEN_LIFETIME_MS = 24 * 60 * 60 * 1000
 

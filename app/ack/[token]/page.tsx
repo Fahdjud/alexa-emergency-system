@@ -1,6 +1,8 @@
 /*
  * /ack/[token]: the page a contact opens from an alert. It shows what happened
- * and lets them answer: on my way, calling now, or handling it.
+ * and lets them answer: on my way, calling now, or handling it. A link from
+ * an email (one per incident, sent to every contact) first asks who is
+ * answering.
  *
  * Why this file exists: contacts need one tap to stop the escalation and let
  * the others know. Opening the page changes nothing (link previews open it
@@ -11,7 +13,7 @@ import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { getIncident } from "@/lib/safety/incidents"
 import { EMERGENCY_NUMBERS } from "@/lib/safety/region"
-import { verifyAckToken } from "@/lib/server/ack-token"
+import { ANY_CONTACT, verifyAckToken } from "@/lib/server/ack-token"
 import { RESPONSE_BUTTONS } from "@/lib/server/alert-message"
 import { requireEnv } from "@/lib/server/env"
 import { getStore } from "@/lib/server/providers/store"
@@ -27,10 +29,10 @@ export default async function AckPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>
-  searchParams: Promise<{ done?: string }>
+  searchParams: Promise<{ done?: string; as?: string }>
 }) {
   const { token } = await params
-  const { done } = await searchParams
+  const { done, as } = await searchParams
   const claims = claimsFromToken(token)
   const store = await getStore()
   const incident = claims ? await store.getIncident(claims.incidentId) : null
@@ -47,6 +49,11 @@ export default async function AckPage({
   const contacts = await store.listContacts()
   const nameOf = (id: string | null) =>
     contacts.find((contact) => contact.id === id)?.name ?? "Someone"
+  const fromEmail = claims.contactId === ANY_CONTACT
+  /** Who is answering: from the link, or (email) as chosen on this page. */
+  const me = fromEmail
+    ? (contacts.find((contact) => contact.id === as)?.id ?? null)
+    : claims.contactId
   const { label } = getIncident(incident.incidentType)
   const quote = incident.classification?.supportingQuote
 
@@ -63,7 +70,8 @@ export default async function AckPage({
       </dl>
 
       {incident.status === "acknowledged" &&
-      incident.acknowledgedByContactId !== claims.contactId ? (
+      incident.acknowledgedByContactId !== me &&
+      !fromEmail ? (
         <p className="m-0 rounded-md bg-[#15301f] p-3 text-[#b9ecc8]">
           {nameOf(incident.acknowledgedByContactId)} is{" "}
           {responsePhrase(incident.acknowledgedResponse)}.
@@ -75,17 +83,47 @@ export default async function AckPage({
       ) : (
         <form action="/api/ack" method="post" className="grid gap-2">
           <input type="hidden" name="token" value={token} />
-          {incident.status === "acknowledged" && (
-            <p className="m-0 rounded-md bg-[#15301f] p-3 text-[#b9ecc8]">
-              Thank you: they know you are{" "}
-              {responsePhrase(incident.acknowledgedResponse)}.
-              {done ? " The others have been told." : ""} You can change your
-              answer below.
-            </p>
+          {incident.status === "acknowledged" &&
+            (incident.acknowledgedByContactId === me ? (
+              <p className="m-0 rounded-md bg-[#15301f] p-3 text-[#b9ecc8]">
+                Thank you: they know you are{" "}
+                {responsePhrase(incident.acknowledgedResponse)}.
+                {done ? " The others have been told." : ""} You can change your
+                answer below.
+              </p>
+            ) : (
+              <p className="m-0 rounded-md bg-[#15301f] p-3 text-[#b9ecc8]">
+                {nameOf(incident.acknowledgedByContactId)} is{" "}
+                {responsePhrase(incident.acknowledgedResponse)}.
+              </p>
+            ))}
+          {fromEmail && (
+            <fieldset className="m-0 grid gap-1.5 rounded-md border border-[#263c53] p-3">
+              <legend className="px-1 text-sm text-[#d4e0ec]">
+                Who are you? / من أنت؟
+              </legend>
+              {contacts.map((contact) => (
+                <label
+                  className="flex items-center gap-2 text-sm"
+                  key={contact.id}
+                >
+                  <input
+                    type="radio"
+                    name="contact"
+                    value={contact.id}
+                    defaultChecked={contact.id === me}
+                    required
+                  />
+                  {contact.name}
+                </label>
+              ))}
+            </fieldset>
           )}
           {(["on-my-way", "calling", "handling"] as const).map((response) => (
             <Button
               className={
+                incident.status === "acknowledged" &&
+                incident.acknowledgedByContactId === me &&
                 incident.acknowledgedResponse === response
                   ? "h-12 bg-[#00c8f4] text-base font-semibold text-[#06131c] hover:bg-[#59ddf5]"
                   : "h-12 border border-[#263c53] bg-[#101e2d] text-base font-semibold text-[#d4e0ec] hover:bg-[#14283b]"
