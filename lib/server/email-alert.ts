@@ -11,7 +11,11 @@
  */
 import "server-only"
 
-import { publishEmail, subscribeTrustedContact } from "@/lib/aws/sns"
+import {
+  confirmedEmailSubscribers,
+  publishEmail,
+  subscribeTrustedContact,
+} from "@/lib/aws/sns"
 
 import { emailSubject, emailText } from "./alert-message"
 import type { IncidentRecord } from "./providers/store"
@@ -46,4 +50,37 @@ export async function signUpForEmail(
     console.error("Email sign-up failed", error)
     return "failed"
   }
+}
+
+/** AWS is asked at most this often; the contacts screen refreshes every few seconds. */
+const CONFIRMED_CACHE_MS = 30_000
+let confirmedCache: { atMs: number; emails: Set<string> | null } | null = null
+
+/**
+ * The addresses that clicked AWS's confirmation link, or null when unknown
+ * (email off, or the AWS key may not list subscriptions). Unknown is shown as
+ * "waiting for confirmation", never as confirmed.
+ */
+export async function confirmedEmails(
+  nowMs = Date.now()
+): Promise<Set<string> | null> {
+  if (!emailAlertsConfigured()) return null
+  if (confirmedCache && nowMs - confirmedCache.atMs < CONFIRMED_CACHE_MS)
+    return confirmedCache.emails
+  let emails: Set<string> | null = null
+  try {
+    emails = await confirmedEmailSubscribers()
+  } catch (error) {
+    console.warn(
+      "Could not check email confirmations. Give the AWS key sns:ListSubscriptionsByTopic on the topic.",
+      error
+    )
+  }
+  confirmedCache = { atMs: nowMs, emails }
+  return emails
+}
+
+/** Forget the cached answer, e.g. right after signing an address up. */
+export function forgetConfirmedEmails(): void {
+  confirmedCache = null
 }

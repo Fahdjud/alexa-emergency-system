@@ -13,7 +13,12 @@ import { z } from "zod"
 
 import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { publicView } from "@/lib/server/contact-view"
-import { emailAlertsConfigured, signUpForEmail } from "@/lib/server/email-alert"
+import {
+  confirmedEmails,
+  emailAlertsConfigured,
+  forgetConfirmedEmails,
+  signUpForEmail,
+} from "@/lib/server/email-alert"
 import { getStore } from "@/lib/server/providers/store"
 
 const EmailSchema = z.object({
@@ -48,11 +53,12 @@ export async function PUT(
     return Response.json({ error: "Unknown contact." }, { status: 404 })
 
   const status = await signUpForEmail(body.data.email)
+  forgetConfirmedEmails()
   const contact = await store.setContactEmail(id, body.data.email, status)
   if (!contact)
     return Response.json({ error: "Unknown contact." }, { status: 404 })
   return Response.json(
-    { contact: publicView(contact) },
+    { contact: publicView(contact, await confirmedEmails()) },
     { status: status === "failed" ? 502 : 200 }
   )
 }

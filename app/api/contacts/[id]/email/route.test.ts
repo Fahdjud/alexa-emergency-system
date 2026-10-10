@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const subscribe = vi.fn()
 vi.mock("@/lib/aws/sns", () => ({
   subscribeTrustedContact: (email: string) => subscribe(email),
+  confirmedEmailSubscribers: async () => new Set<string>(),
   sendEmergencyAlert: vi.fn(),
 }))
 

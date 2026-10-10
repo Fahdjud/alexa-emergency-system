@@ -339,7 +339,7 @@ export function SetupWizard({
             {contacts.length > 0 && connected === 0 && (
               <Notice>
                 No contact has connected yet. Alerts start working as soon as
-                one of them taps Start.
+                one of them taps Start in Telegram or confirms their email.
               </Notice>
             )}
             <Nav

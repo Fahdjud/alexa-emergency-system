@@ -37,11 +37,16 @@ export type ContactView = {
   id: string
   name: string
   priority: number
+  /** Can be alerted on some channel: Telegram, or a confirmed email. */
   connected: boolean
+  telegramConnected: boolean
   inviteLink: string | null
   email: string | null
-  /** "pending": AWS emailed them a link to click once. "failed": sign-up failed; save again to retry. */
-  emailStatus: "pending" | "failed" | null
+  /**
+   * "confirmed": they clicked AWS's link and get email alerts. "pending": AWS
+   * emailed them that link. "failed": sign-up failed; save again to retry.
+   */
+  emailStatus: "pending" | "confirmed" | "failed" | null
 }
 
 export type ContactList = {

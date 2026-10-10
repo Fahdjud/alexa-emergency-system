@@ -48,7 +48,10 @@ export function ContactsPanel({
     onChange?.(list.contacts)
   }, [deviceToken, onChange])
 
-  const waiting = contacts?.some((contact) => !contact.connected) ?? true
+  const waiting =
+    contacts?.some(
+      (contact) => !contact.connected || contact.emailStatus === "pending"
+    ) ?? true
   useEffect(() => {
     const first = setTimeout(refresh, 0)
     if (!waiting) return () => clearTimeout(first)
@@ -122,12 +125,10 @@ export function ContactsPanel({
                 <span
                   className={`text-xs ${contact.connected ? "text-[#8fd0a6]" : "text-[#e2b78e]"}`}
                 >
-                  {contact.connected
-                    ? "Connected on Telegram"
-                    : "Waiting for them to open the invite and tap Start"}
+                  {reachableText(contact)}
                 </span>
               </span>
-              {!contact.connected && contact.inviteLink && (
+              {!contact.telegramConnected && contact.inviteLink && (
                 <Button
                   className="shrink-0 border-[#263c53] bg-[#101e2d] text-[#d4e0ec] hover:bg-[#14283b]"
                   variant="outline"
@@ -140,7 +141,11 @@ export function ContactsPanel({
                   ) : (
                     <Share2 size={14} />
                   )}
-                  {copiedId === contact.id ? "Copied" : "Send invite"}
+                  {copiedId === contact.id
+                    ? "Copied"
+                    : contact.connected
+                      ? "Add Telegram"
+                      : "Send invite"}
                 </Button>
               )}
             </div>
@@ -189,6 +194,18 @@ export function ContactsPanel({
       )}
     </div>
   )
+}
+
+/** How this contact will be alerted, in a few words. */
+function reachableText(contact: ContactView): string {
+  const email = contact.emailStatus === "confirmed"
+  if (contact.telegramConnected && email)
+    return "Connected on Telegram and email"
+  if (contact.telegramConnected) return "Connected on Telegram"
+  if (email) return "Connected by email"
+  if (contact.emailStatus === "pending")
+    return "Waiting for them to confirm the email, or open the Telegram invite"
+  return "Waiting for them to open the invite and tap Start"
 }
 
 const inputClass =
@@ -256,12 +273,18 @@ function EmailRow({
       {contact.email && (
         <span
           className={
-            contact.emailStatus === "failed" ? "text-[#e2b78e]" : undefined
+            contact.emailStatus === "failed"
+              ? "text-[#e2b78e]"
+              : contact.emailStatus === "confirmed"
+                ? "text-[#8fd0a6]"
+                : undefined
           }
         >
           {contact.emailStatus === "failed"
             ? "Sign-up failed. Tap Change and save again."
-            : "They must click the confirmation link AWS emailed them (check spam)."}
+            : contact.emailStatus === "confirmed"
+              ? "✓ Confirmed: email alerts are on."
+              : "They must click the confirmation link AWS emailed them (check spam)."}
         </span>
       )}
     </div>
