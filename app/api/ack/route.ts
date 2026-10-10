@@ -5,9 +5,10 @@
  * Why this file exists: acknowledging stops escalation, so it happens only on
  * an explicit button press (POST), never when a link is merely opened. Chat
  * apps and email open links on their own to build previews. The signed token
- * says which contact acknowledged.
+ * says which contact acknowledged; an email link (one per incident, sent to
+ * everyone) instead takes the contact chosen on the page (`contact`).
  */
-import { verifyAckToken } from "@/lib/server/ack-token"
+import { ANY_CONTACT, verifyAckToken } from "@/lib/server/ack-token"
 import { escalationDeps } from "@/lib/server/escalation-deps"
 import { acknowledgeIncident } from "@/lib/server/escalation-runner"
 import { CONTACT_RESPONSES, type ContactResponse } from "@/lib/safety/types"
@@ -26,12 +27,25 @@ export async function POST(request: Request) {
       { status: 400 }
     )
 
+  const chosen = form?.get("contact")
+  const contactId =
+    claims.contactId === ANY_CONTACT
+      ? typeof chosen === "string"
+        ? chosen
+        : ""
+      : claims.contactId
+  if (!contactId)
+    return Response.json({ error: "Choose who you are." }, { status: 400 })
+
   const requested = form?.get("response")
   const response = CONTACT_RESPONSES.find((value) => value === requested)
   await acknowledgeIncident(
     deps,
-    claims,
+    { incidentId: claims.incidentId, contactId },
     (response ?? "handling") satisfies ContactResponse
   )
-  return Response.redirect(new URL(`/ack/${token}?done=1`, request.url), 303)
+  const done = new URL(`/ack/${token}`, request.url)
+  done.searchParams.set("done", "1")
+  if (claims.contactId === ANY_CONTACT) done.searchParams.set("as", contactId)
+  return Response.redirect(done, 303)
 }

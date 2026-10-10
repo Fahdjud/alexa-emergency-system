@@ -21,7 +21,8 @@ teammates can find their way around and the setup can be repeated. The demo at
    deadline, so a crashed tab still escalates.
 4. **Escalation (server, no AI).** Contacts get Telegram messages with the
    audio and three one-tap answers: **On my way**, **Calling now** and
-   **I'm handling it**. Email contacts get the same text by email.
+   **I'm handling it**. Email contacts get one email per incident with a link
+   to the same three answers (the page asks who is answering).
    - Critical incidents alert everyone at once, every 2 min.
    - High-severity incidents alert one contact at a time, 3 min each.
    - Medium-severity incidents alert one contact at a time, 5 min each.
@@ -124,8 +125,9 @@ Incident records are kept for 90 days.
    - Add each contact's email on the setup screen. AWS emails them a
      confirmation link they must click once (it may land in spam).
    - When an incident escalates, one email goes to everyone confirmed on the
-     topic, with the same text as the Telegram alert. The "I'm handling it"
-     button stays on Telegram.
+     topic. It links to a page where the reader picks their name and answers
+     On my way, Calling now or I'm handling it, just like the Telegram
+     buttons.
 5. **Check:** open `/health`, enter the device token, and confirm everything shows ✅.
 6. **Monitor:** open `/monitor` in Chrome and follow the setup screen.
    Add contacts and send each one their invite link; they tap **Start** in

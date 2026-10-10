@@ -17,23 +17,56 @@ export function alertText(
   incident: IncidentRecord,
   { reminder }: { reminder: boolean }
 ): string {
-  const { label } = getIncident(incident.incidentType)
+  return [
+    `${reminder ? "🔁 Reminder / تذكير\n" : ""}${headline(incident)}`,
+    ...details(incident),
+    "",
+    "Tap a button to answer. The others stop being alerted, and they hear it at home. / اضغط زرًا للرد.",
+    emergencyLine(),
+  ].join("\n")
+}
+
+/** Email subjects must be plain ASCII, under 100 characters. */
+export function emailSubject(incident: IncidentRecord): string {
+  return `Safety alert at home: ${getIncident(incident.incidentType).label}`
+}
+
+/** The email version: one link for everyone on the list instead of buttons. */
+export function emailText(incident: IncidentRecord, answerUrl: string): string {
+  return [
+    headline(incident),
+    ...details(incident),
+    "",
+    "Answer here (on my way, calling, or handling it). It stops the alerts to the others, and they hear it at home:",
+    "رد من هنا (في الطريق، أتصل، أو سأتولى الأمر):",
+    answerUrl,
+    "",
+    emergencyLine(),
+    "",
+    "This is an automated alert from the home safety monitor, not a medical diagnosis. / تنبيه آلي وليس تشخيصًا طبيًا.",
+  ].join("\n")
+}
+
+function headline(incident: IncidentRecord): string {
+  return `🚨 ${getIncident(incident.incidentType).label} at home / تنبيه في المنزل`
+}
+
+function details(incident: IncidentRecord): string[] {
   const reason =
     incident.escalationReason === "asked-for-help"
       ? "They asked for help. / طلب المساعدة."
       : 'They did not answer "Are you okay?". / لم يرد على سؤال "هل أنت بخير؟".'
   const quote = incident.classification?.supportingQuote
-  const lines = [
-    `${reminder ? "🔁 Reminder / تذكير\n" : ""}🚨 ${label} at home / تنبيه في المنزل`,
+  return [
     `Heard: ${incident.triggerDescription}`,
-    quote ? `Said: “${quote}”` : null,
+    ...(quote ? [`Said: “${quote}”`] : []),
     reason,
     `Time: ${formatRiyadhTime(incident.createdAtMs)}`,
-    "",
-    "Tap a button to answer. The others stop being alerted, and they hear it at home. / اضغط زرًا للرد.",
-    `Emergency / الطوارئ: ${EMERGENCY_NUMBERS.unified} (ambulance / إسعاف ${EMERGENCY_NUMBERS.ambulance})`,
   ]
-  return lines.filter((line) => line !== null).join("\n")
+}
+
+function emergencyLine(): string {
+  return `Emergency / الطوارئ: ${EMERGENCY_NUMBERS.unified} (ambulance / إسعاف ${EMERGENCY_NUMBERS.ambulance})`
 }
 
 /** The reply buttons on an alert, in the order shown. */

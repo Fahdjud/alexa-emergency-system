@@ -51,18 +51,20 @@ async function setup(
   })
   const { notifier, sent } = recordingNotifier(options.unreachable)
   const emailed: string[] = []
+  const emailLinks: string[] = []
   const deps = (nowMs: number): EscalationDeps => ({
     store,
     notifier,
     nowMs,
     ackSecret: SECRET,
     baseUrl: "https://example.test",
-    emailAlert: async (escalating) => {
+    emailAlert: async (escalating, answerUrl) => {
       if (options.emailFails) throw new Error("SNS is down")
       emailed.push(escalating.id)
+      emailLinks.push(answerUrl)
     },
   })
-  return { store, incident, daughter, son, sent, emailed, deps }
+  return { store, incident, daughter, son, sent, emailed, emailLinks, deps }
 }
 
 const tokenFrom = (url: string) => url.split("/ack/")[1]
@@ -286,6 +288,14 @@ describe("email alerts", () => {
     expect(emailed).toEqual([incident.id])
   })
 
+  it("puts one answer link for the incident in the email", async () => {
+    const { incident, emailLinks, deps } = await setup()
+    await answerIncident(deps(START), incident.id, "help")
+    expect(emailLinks).toHaveLength(1)
+    const claims = verifyAckToken(tokenFrom(emailLinks[0]), SECRET, START)
+    expect(claims).toMatchObject({ incidentId: incident.id, contactId: "any" })
+  })
+
   it("still alerts on Telegram when email fails", async () => {
     const { incident, sent, deps } = await setup({ emailFails: true })
     await answerIncident(deps(START), incident.id, "help")
@@ -309,5 +319,28 @@ describe("acknowledge tokens", () => {
     expect(verifyAckToken(`${token}x`, SECRET, START)).toBeNull()
     expect(verifyAckToken(token, SECRET, START + 25 * 60 * MINUTE)).toBeNull()
     expect(verifyAckToken("garbage", SECRET, START)).toBeNull()
+  })
+})
+
+describe("email text", () => {
+  it("links to the answer page instead of mentioning buttons", async () => {
+    const { emailSubject, emailText } = await import("./alert-message")
+    const { store, incident } = await setup()
+    const record = (await store.getIncident(incident.id))!
+    const text = emailText(record, "https://example.test/ack/abc")
+    expect(text).toContain("https://example.test/ack/abc")
+    expect(text).not.toMatch(/tap a button/i)
+    expect(emailSubject(record)).toBe("Safety alert at home: Possible fall")
+  })
+
+  it("keeps every email subject plain ASCII and short (SNS rule)", async () => {
+    const { emailSubject } = await import("./alert-message")
+    const { INCIDENTS } = await import("@/lib/safety/incidents")
+    const { store, incident } = await setup()
+    const record = (await store.getIncident(incident.id))!
+    for (const { id } of INCIDENTS) {
+      const subject = emailSubject({ ...record, incidentType: id })
+      expect(subject).toMatch(/^[\x20-\x7e]{1,99}$/)
+    }
   })
 })

@@ -5,28 +5,29 @@
  * Why this file exists: the SNS layer only ran from the demo's "simulate
  * fall" button. This adapter lets real escalations from the safety monitor
  * send the same email, alongside the Telegram alerts, and lets the setup
- * screen sign a contact's email up to the topic. SNS sends one message
- * to the whole topic, so the email has no per-person "I'm handling it" link;
- * Telegram keeps doing that. Email is off unless AWS_SNS_TOPIC_ARN is set.
+ * screen sign a contact's email up to the topic. SNS sends one message to the
+ * whole topic, so the email carries one answer link for the incident and the
+ * page asks who is answering. Email is off unless AWS_SNS_TOPIC_ARN is set.
  */
 import "server-only"
 
-import { sendEmergencyAlert, subscribeTrustedContact } from "@/lib/aws/sns"
-import { getIncident } from "@/lib/safety/incidents"
+import { publishEmail, subscribeTrustedContact } from "@/lib/aws/sns"
 
-import { alertText } from "./alert-message"
+import { emailSubject, emailText } from "./alert-message"
 import type { IncidentRecord } from "./providers/store"
 
 export function emailAlertsConfigured(): boolean {
   return Boolean(process.env.AWS_SNS_TOPIC_ARN?.trim())
 }
 
-export async function emailIncident(incident: IncidentRecord): Promise<void> {
-  await sendEmergencyAlert({
-    id: incident.id,
-    type: getIncident(incident.incidentType).label,
-    message: alertText(incident, { reminder: false }),
-    occurredAt: new Date(incident.createdAtMs).toISOString(),
+/** answerUrl opens a page where whoever reads the email says who they are and answers. */
+export async function emailIncident(
+  incident: IncidentRecord,
+  answerUrl: string
+): Promise<void> {
+  await publishEmail({
+    subject: emailSubject(incident),
+    message: emailText(incident, answerUrl),
   })
 }
 
