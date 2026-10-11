@@ -48,6 +48,8 @@ function setup(speech = false) {
           },
         }
       if (name === "react/jsx-runtime") return { jsx, jsxs: jsx }
+      if (name === "@/lib/client/monitor-settings")
+        return { deviceTokenStore: { read: () => "test-device-token" } }
       if (name === "./data")
         return { getDemoReply: () => "Demo reply", suggestions: [] }
       return new Proxy({}, { get: (_, key) => key })
@@ -80,7 +82,11 @@ function setup(speech = false) {
     setInterval: () => ++sequence,
     clearInterval() {},
     fetch: async (url, options) => {
-      calls.push({ url, event: JSON.parse(options.body) })
+      calls.push({
+        url,
+        event: JSON.parse(options.body),
+        authorization: options.headers.Authorization,
+      })
       return {
         ok: true,
         json: async () => ({
@@ -149,6 +155,7 @@ async function verify() {
   demo.advance(30000)
   assert.equal(demo.calls.length, 1)
   assert.equal(demo.calls[0].url, "/api/emergency")
+  assert.equal(demo.calls[0].authorization, "Bearer test-device-token")
   assert.equal(demo.calls[0].event.type, "Possible Fall")
   assert.match(demo.calls[0].event.message, /Demo simulation/)
   await new Promise((resolve) => setImmediate(resolve))

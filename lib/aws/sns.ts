@@ -1,6 +1,7 @@
 import "server-only"
 
 import {
+  ListSubscriptionsByTopicCommand,
   PublishCommand,
   SNSClient,
   SubscribeCommand,
@@ -54,4 +55,50 @@ export async function sendEmergencyAlert(event: EmergencyEvent) {
   )
   if (!response.MessageId) throw new Error("SNS did not return a message ID")
   return response.MessageId
+}
+
+/** Publishes a ready-made email to the topic (used by the safety monitor's escalation). */
+export async function publishEmail({
+  subject,
+  message,
+}: {
+  subject: string
+  message: string
+}) {
+  const { topicArn } = getAwsEnv()
+  const response = await getClient().send(
+    new PublishCommand({
+      TopicArn: topicArn,
+      Subject: subject,
+      Message: message,
+    })
+  )
+  if (!response.MessageId) throw new Error("SNS did not return a message ID")
+  return response.MessageId
+}
+
+/** Every email address that has confirmed its subscription to the topic (lowercase). */
+export async function confirmedEmailSubscribers(): Promise<Set<string>> {
+  const { topicArn } = getAwsEnv()
+  const confirmed = new Set<string>()
+  let nextToken: string | undefined
+  do {
+    const page = await getClient().send(
+      new ListSubscriptionsByTopicCommand({
+        TopicArn: topicArn,
+        NextToken: nextToken,
+      })
+    )
+    for (const subscription of page.Subscriptions ?? []) {
+      // Pending ones read "PendingConfirmation" instead of an ARN.
+      if (
+        subscription.Protocol === "email" &&
+        subscription.Endpoint &&
+        subscription.SubscriptionArn?.startsWith("arn:")
+      )
+        confirmed.add(subscription.Endpoint.toLowerCase())
+    }
+    nextToken = page.NextToken
+  } while (nextToken)
+  return confirmed
 }

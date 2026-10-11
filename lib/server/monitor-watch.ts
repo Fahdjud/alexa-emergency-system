@@ -1,0 +1,52 @@
+/*
+ * Records heartbeats and warns the first contact when the monitor goes
+ * offline, and again when it is back. The offline rule itself lives in
+ * lib/safety/monitor-health.ts.
+ */
+import "server-only"
+
+import { monitorHealth } from "@/lib/safety/monitor-health"
+
+import { monitorBackText, monitorOfflineText } from "./alert-message"
+import type { EscalationDeps } from "./escalation-runner"
+
+export async function recordHeartbeat(
+  deps: EscalationDeps,
+  listening: boolean
+): Promise<void> {
+  const previous = await deps.store.getMonitorStatus()
+  await deps.store.saveMonitorStatus({
+    lastSeenMs: deps.nowMs,
+    listening,
+    offlineAlertSentAtMs: null,
+  })
+  const wasReportedOffline = previous?.offlineAlertSentAtMs != null
+  if (wasReportedOffline && listening) {
+    await tellFirstContact(deps, monitorBackText())
+  }
+}
+
+/** Called on every scheduler tick. Sends at most one "offline" message per outage. */
+export async function checkMonitorHealth(deps: EscalationDeps): Promise<void> {
+  const status = await deps.store.getMonitorStatus()
+  if (!status || monitorHealth(status, deps.nowMs) !== "offline-alert-due")
+    return
+  await deps.store.saveMonitorStatus({
+    ...status,
+    offlineAlertSentAtMs: deps.nowMs,
+  })
+  await tellFirstContact(deps, monitorOfflineText(status.lastSeenMs))
+}
+
+async function tellFirstContact(
+  deps: EscalationDeps,
+  text: string
+): Promise<void> {
+  const first = (await deps.store.listContacts()).find((contact) =>
+    deps.notifier.canReach(contact)
+  )
+  if (!first) return
+  await deps.notifier
+    .send(first, { text })
+    .catch((error) => console.error(`Message to ${first.name} failed`, error))
+}
