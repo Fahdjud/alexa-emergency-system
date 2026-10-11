@@ -1,17 +1,12 @@
 /*
- * escalation-runner.ts: applies the escalation rules to stored incidents and
- * sends the alerts. Plain server code, no AI.
+ * Applies the escalation policy to stored incidents and sends the alerts. It
+ * runs on every scheduler tick and immediately when someone asks for help.
+ * All effects go through the injected store and notifier.
  *
- * Why this file exists: lib/safety/escalation-policy.ts decides *what* should
- * happen; this file makes it happen: reads the store, sends messages, records
- * progress. It runs on every scheduled tick, and straight away when someone
- * asks for help. All of its effects go through the injected store and
- * notifier, so tests run it with fakes.
- *
- * Each step is claimed before it is sent (a conditional update on
- * stepsSent), so overlapping ticks can never alert twice. If the server dies
- * mid-send, that one step is lost, but the later "everyone" rounds still
- * reach every contact.
+ * Each step is claimed with a conditional update on stepsSent before it is
+ * sent, so overlapping ticks cannot alert twice. If the server dies mid-send,
+ * that step is lost, but the later rounds to everyone still reach every
+ * contact.
  */
 import "server-only"
 
@@ -73,7 +68,7 @@ export async function answerIncident(
   )
 }
 
-export async function startEscalation(
+async function startEscalation(
   deps: EscalationDeps,
   incidentId: string,
   reason: NonNullable<IncidentRecord["escalationReason"]>
@@ -91,8 +86,8 @@ export async function startEscalation(
   return advanceEscalation(deps, started)
 }
 
-/** Sends the next due step, or gives up after the last round. Safe to call as often as you like. */
-export async function advanceEscalation(
+/** Sends the next due step, or gives up after the last round. Idempotent. */
+async function advanceEscalation(
   deps: EscalationDeps,
   incident: IncidentRecord
 ): Promise<IncidentRecord | null> {

@@ -1,10 +1,6 @@
 /*
- * microphone.ts: opens the microphone and streams raw 16 kHz samples to a
- * callback.
- *
- * Why this file exists: the existing voice input (Web Speech API in
- * components/alexa/alexa-assistant.tsx) gives text only, for one sentence at a
- * time. Continuous listening needs the raw stream.
+ * Opens the microphone and streams raw 16 kHz mono samples to a callback
+ * through an AudioWorklet.
  */
 import { CHUNK_MS, TARGET_SAMPLE_RATE } from "./audio-settings"
 
@@ -56,7 +52,7 @@ export async function startMicrophone(
   }
 }
 
-/** A short, human message for why the microphone could not start. */
+/** A user-facing explanation of why the microphone could not start. */
 export function describeMicrophoneError(error: unknown): string {
   const name = error instanceof DOMException ? error.name : ""
   if (name === "NotAllowedError")

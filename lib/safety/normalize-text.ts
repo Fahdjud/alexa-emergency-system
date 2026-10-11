@@ -1,12 +1,8 @@
 /*
- * normalize-text.ts: turns speech-recognition output and config phrases into
- * one comparable form, for English and Arabic.
- *
- * Why this file exists: the demo app compares text with a plain
- * .includes() (getDemoReply), which misses "I have fallen" vs "I've fallen" and
- * Arabic spelling variants (أ/إ/ا, ة/ه, diacritics). Both the config phrases
- * and the transcript go through the same function, so the config can be
- * written naturally.
+ * Normalises speech-recognition output and configured phrases into one
+ * comparable form: English contractions are expanded, and Arabic diacritics,
+ * tatweel and letter variants (أ/إ/آ/ا, ة/ه, ى/ي) are unified. Phrases can
+ * therefore be written naturally and listed once.
  */
 
 const ENGLISH_CONTRACTIONS: [RegExp, string][] = [

@@ -1,14 +1,9 @@
 "use client"
 
 /*
- * contacts-panel.tsx: the emergency contacts, in the order they are alerted,
- * with an invite link to share, live "connected" status and, when email
- * alerts are set up, each contact's email address.
- *
- * Why this file exists: escalation needs people to alert, and each person
- * must open their invite link once so the Telegram bot can message them. Used
- * by the setup screen and the settings; while anyone is still unconnected it
- * refreshes on its own, so the tick appears the moment they tap Start.
+ * Emergency contacts in alert order, with invite links, email addresses and
+ * live connection status. While anyone is still waiting to connect, the list
+ * refreshes itself.
  */
 import { useCallback, useEffect, useState, type FormEvent } from "react"
 import { Check, Mail, Share2, UserPlus } from "lucide-react"

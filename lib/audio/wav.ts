@@ -1,9 +1,7 @@
 /*
- * wav.ts: encodes audio samples as a 16-bit mono WAV file.
- *
- * Why this file exists: speech-to-text APIs and Telegram need a normal audio
- * file, and the browser's MediaRecorder only produces compressed formats that
- * vary by browser. WAV is simple, lossless and accepted everywhere.
+ * Encodes samples as a 16-bit mono WAV file. MediaRecorder only produces
+ * compressed, browser-specific formats; WAV is accepted by every
+ * speech-to-text API and by Telegram.
  */
 
 /** Samples are floats in [-1, 1]; values outside are clipped. */

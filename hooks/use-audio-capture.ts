@@ -1,13 +1,8 @@
 /*
- * use-audio-capture.ts: React hook that runs the microphone, keeps the last
- * BUFFER_SECONDS of audio in memory, and builds trigger snippets on request.
- *
- * Why this file exists: the existing AlexaAssistant keeps its voice logic
- * private and only handles one sentence at a time. Later steps (sound
- * classifier, keyword spotting) subscribe to the same chunks via onChunk.
- *
- * Privacy: audio only ever lives in the ring buffer, which is constantly
- * overwritten and cleared on stop. Nothing is saved or sent here.
+ * Runs the microphone, keeps the last BUFFER_SECONDS of audio in a ring
+ * buffer and builds trigger snippets on request. Other hooks subscribe to the
+ * same chunks through onChunk. Audio exists only in the ring buffer, which is
+ * overwritten continuously and cleared on stop.
  */
 import { useCallback, useEffect, useRef, useState } from "react"
 

@@ -1,16 +1,12 @@
 /*
- * confirmation.ts: understands the answer to "Are you okay?" in English and
- * Arabic: "fine", "help" or "unclear".
+ * Interprets the answer to "Are you okay?" as "fine", "help" or "unclear",
+ * using the reply phrases of every language pack.
  *
- * Why this file exists: the demo app only maps prompts to canned replies.
- * The phrases come from every language pack, so an answer in any language
- * is understood whatever the language switch says.
- * Here a wrong guess is dangerous, so the rules are explicit:
- * 1. Longer phrases win over shorter ones they contain, so "no problem" is
- *    "fine" even though it contains "no", and "not okay" beats "okay".
- * 2. If any help phrase is heard, the answer is "help", even next to a fine
- *    phrase ("I'm fine... no, help").
- * 3. Anything else is "unclear", and the question is asked again or times out.
+ * A wrong reading is dangerous, so the rules are strict:
+ * 1. Longer phrases are matched first, so "no problem" counts as fine even
+ *    though it contains "no", and "not okay" wins over "okay".
+ * 2. Any help phrase makes the answer "help", even next to a fine phrase.
+ * 3. Anything else is "unclear": the question is repeated until it times out.
  */
 import { LANGUAGE_PACKS } from "./languages"
 import { containsPhrase, normalizeText, removePhrase } from "./normalize-text"

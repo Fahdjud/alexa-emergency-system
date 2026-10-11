@@ -1,15 +1,10 @@
 "use client"
 
 /*
- * monitor-screen.tsx: the safety monitor. On first use it shows the setup
- * screen; after that, a calm main screen: listening status, what is being
- * watched for, recent activity, the spoken conversation, and a full-screen
- * "Are you okay?" prompt when something is detected.
- *
- * Why this file exists: the existing AlexaAssistant is a push-to-talk chat
- * and cannot listen continuously. This is a new screen, so the demo at "/"
- * stays unchanged. It reuses ConversationThread for the conversation. All
- * logic lives in hooks/use-safety-monitor.ts, so teammates can restyle this.
+ * The monitor page: setup on first use, then the main screen with listening
+ * status, what is being watched for, recent activity, the conversation and
+ * the full-screen confirmation prompt. All behaviour lives in
+ * hooks/use-safety-monitor.ts.
  */
 import { useEffect, useState, type ReactNode } from "react"
 import {
@@ -29,6 +24,7 @@ import { Button } from "@/components/ui/button"
 import type { ClassifierStatus } from "@/hooks/use-sound-triggers"
 import { useSafetyMonitor, type Detection } from "@/hooks/use-safety-monitor"
 import { BUFFER_SECONDS } from "@/lib/audio/audio-settings"
+import { voiceName } from "@/lib/audio/speak"
 import type { SpeechListenerStatus } from "@/lib/audio/speech-listener"
 import { DEFAULT_PROFILE } from "@/lib/client/monitor-settings"
 import { listContacts, type IncidentStatusView } from "@/lib/client/safety-api"
@@ -306,6 +302,11 @@ function MainScreen({
               <span dir="auto">
                 Words ({languagePack(monitor.language).nativeName}):{" "}
                 {monitor.lastHeard ? `“${monitor.lastHeard}”` : "—"}
+              </span>
+              <span>
+                Voice:{" "}
+                {voiceName(languagePack(monitor.language).speechTag) ??
+                  "browser default"}
               </span>
             </div>
           )}

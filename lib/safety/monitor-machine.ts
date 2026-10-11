@@ -1,17 +1,14 @@
 /*
- * monitor-machine.ts: the monitor page's states and how events move between
- * them, as a pure reducer (usable with React's useReducer).
+ * The monitor's state machine, as a reducer for useReducer:
  *
  *   idle -> listening -> [checking] -> confirming -> cancelled | escalated
- *                ^________________________________________|
+ *              ^__________________________________________|
  *
- * Why this file exists: the demo's VoiceState only covers a single
- * push-to-talk turn. The safety flow has more steps and safety rules that
- * must hold whatever the UI does:
- * - If the AI check fails, we still ask (fail safe).
+ * Invariants:
+ * - A failed AI check still leads to the question.
  * - No answer within CONFIRMATION_TIMEOUT_MS escalates.
- * - An unclear answer does not cancel; we ask again until the deadline.
- * - While one incident is open, new triggers are ignored unless more severe.
+ * - An unclear answer never cancels; the question is repeated.
+ * - While an incident is open, only a more severe trigger replaces it.
  */
 import {
   CONFIRMATION_TIMEOUT_MS,

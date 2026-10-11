@@ -1,14 +1,12 @@
 /*
- * impact-detector.ts: spots a sudden loud impact (a body or object hitting
- * the floor) from the loudness of each 100 ms chunk of audio.
+ * Detects a sudden loud impact, such as a body or object hitting the floor,
+ * from the loudness of each 100 ms chunk.
  *
- * Why this file exists: YAMNet rarely labels a real fall clearly, so falls
- * were missed. A fall is almost always a short, loud spike well above the
- * room's background level that dies away within a few hundred milliseconds
- * (music or a vacuum cleaner stays loud). This simple rule catches those
- * spikes. It is only used when the household sets falls to "High", because
- * doors and dropped objects make spikes too, and the "Are you okay?" question
- * sorts those out.
+ * YAMNet rarely labels real falls reliably. An impact is a short spike well
+ * above the room's background level that fades within a few hundred
+ * milliseconds, which distinguishes it from music or a vacuum cleaner. Doors
+ * and dropped objects also produce spikes, so the detector is only enabled
+ * when falls are set to High, and the confirmation question filters the rest.
  */
 
 export type ImpactDetectorOptions = {
@@ -25,7 +23,7 @@ export type ImpactDetectorOptions = {
   cooldownMs: number
 }
 
-export const DEFAULT_IMPACT_OPTIONS: ImpactDetectorOptions = {
+const DEFAULT_IMPACT_OPTIONS: ImpactDetectorOptions = {
   ratio: 6,
   minLevel: 0.35,
   backgroundFollow: 0.05,

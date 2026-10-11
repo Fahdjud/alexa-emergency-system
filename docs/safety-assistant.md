@@ -1,8 +1,7 @@
-# Safety assistant: how it works and how to set it up
+# Safety assistant: technical guide
 
-This file explains the AI layer added on top of the Alexa-style demo, so that
-teammates can find their way around and the setup can be repeated. The demo at
-`/` is unchanged. The monitor lives at `/monitor`.
+How the home safety monitor at `/monitor` works, how it is configured, and how
+to deploy it. See the [README](../README.md) for an overview.
 
 ## How it works
 
@@ -12,11 +11,13 @@ teammates can find their way around and the setup can be repeated. The demo at
    phrases in English or Arabic, such as "help me" or "الحقوني". Every incident
    type is one entry in `lib/safety/incidents.ts`; the words for it are in
    the language packs (see "Languages" below).
-2. **AI check (server, about $0.003, speech triggers only).** The snippet (15 s
+2. **AI check (server, speech triggers only, well under a cent per check).** The snippet (15 s
    before + 6 s after) is transcribed by Groq Whisper and classified by Claude
    Haiku 4.5. Only a confident "not an incident" (the TV, for example) skips
    the next step. Any failure goes on to the next step anyway.
-3. **"Are you okay?"** The device asks out loud. "I'm fine" cancels.
+3. **"Are you okay?"** The device asks out loud, using the best voice the
+   browser offers for the language (Microsoft Edge has natural Saudi Arabic
+   voices). "I'm fine" cancels.
    "Help", or no answer within 30 s, escalates. The server also gets its own
    deadline, so a crashed tab still escalates.
 4. **Escalation (server, no AI).** Contacts get Telegram messages with the
@@ -37,16 +38,18 @@ teammates can find their way around and the setup can be repeated. The demo at
 
 The first time `/monitor` opens, a short setup asks:
 
-- **Household code.** This is the `MONITOR_DEVICE_TOKEN`, checked against the server.
+- **Household code.** The `MONITOR_DEVICE_TOKEN`, verified with the server.
+  A passphrase of several words joined by `-` (at least 32 characters) is
+  easy to type and still hard to guess.
 - **Language** spoken at home.
 - **What to watch for.** Each incident can be set to Off, Normal or High.
   High lowers that incident's sound thresholds, always asks without an AI
   check, and for falls also treats any sudden loud impact as a possible fall.
 - **When to ask:**
-  - *Always ask*: no AI check at all.
-  - *Balanced*: the AI may skip the question only when it is 90% sure nothing
+  - _Always ask_: no AI check at all.
+  - _Balanced_: the AI may skip the question only when it is 90% sure nothing
     is wrong.
-  - *Fewer interruptions*: 75%, with slightly stronger sounds needed.
+  - _Fewer interruptions_: 75%, with slightly stronger sounds needed.
   - The AI never skips the question when no words were recognised.
 - **Emergency contacts**, with share/copy invite links.
 
@@ -106,12 +109,16 @@ Incident records are kept for 90 days.
    - After updates, run `db/schema.sql` again: it is safe to re-run and adds
      any new columns.
    - To check it is working, run
-     `select * from cron.job_run_details order by start_time desc limit 5;`
+     `select status, start_time from cron.job_run_details order by start_time desc limit 5;`
+     Every run should be `succeeded`. Then
+     `select status_code from net._http_response order by created desc limit 5;`
+     should show `200` (a `401` means the Vault `cron_secret` differs from
+     `CRON_SECRET`).
 2. **Vercel environment variables** (Production)
    - `STORE_PROVIDER=supabase`
    - `NOTIFIER_PROVIDER=telegram`
-   - Every variable from `.env.example`
-   - Then redeploy.
+   - The remaining variables from `.env.example`
+   - Redeploy after any change.
 3. **Telegram webhook** (once, from your own terminal, in the repo folder):
 
    ```bash
@@ -122,6 +129,7 @@ Incident records are kept for 90 days.
    ```
 
    `.env.local` must hold the same `TELEGRAM_WEBHOOK_SECRET` as Vercel.
+
 4. **Email alerts (optional, AWS SNS)**
    - In AWS → SNS, create a Standard topic. Create an IAM user that may only
      `sns:Publish`, `sns:Subscribe` and `sns:ListSubscriptionsByTopic` on that
@@ -137,7 +145,7 @@ Incident records are kept for 90 days.
      topic. It links to a page where the reader picks their name and answers
      On my way, Calling now or I'm handling it, just like the Telegram
      buttons.
-5. **Check:** open `/health`, enter the device token, and confirm everything shows ✅.
+5. **Check:** open `/health`, enter the household code, and confirm everything shows ✅.
 6. **Monitor:** open `/monitor` in Chrome and follow the setup screen.
    Add contacts and send each one their invite link; they tap **Start** in
    Telegram. Then click **Start monitoring**.
@@ -157,15 +165,15 @@ needed. `instrumentation.ts` runs the escalation tick every 15 s when
 
 ## Where things live
 
-| Folder | What |
-|---|---|
-| `lib/safety/` | Pure rules: incidents config, matching, replies, escalation policy, retention. Shared by browser and server. |
-| `lib/audio/` | Browser audio: microphone, ring buffer, WAV, YAMNet, speech recognition and speech output. |
-| `hooks/` | React glue. `use-safety-monitor.ts` wires everything together. |
-| `lib/server/` | Server only: providers (speech-to-text, classifier, notifier, store), escalation runner, tokens. |
-| `app/api/` | API routes. Every route checks the device token, `CRON_SECRET` or the Telegram secret. |
-| `db/` | Supabase schema and scheduler. |
-| `lib/aws/`, `lib/emergency/` | Email alerts through AWS SNS (sending and topic sign-up). |
+| Folder                       | What                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `lib/safety/`                | Pure rules: incidents config, matching, replies, escalation policy, retention. Shared by browser and server. |
+| `lib/audio/`                 | Browser audio: microphone, ring buffer, WAV, YAMNet, speech recognition and speech output.                   |
+| `hooks/`                     | React glue. `use-safety-monitor.ts` wires everything together.                                               |
+| `lib/server/`                | Server only: providers (speech-to-text, classifier, notifier, store), escalation runner, tokens.             |
+| `app/api/`                   | API routes. Every route checks the household code, `CRON_SECRET` or the Telegram secret.                     |
+| `db/`                        | Supabase schema and scheduler.                                                                               |
+| `lib/aws/`, `lib/emergency/` | Email alerts through AWS SNS (sending and topic sign-up).                                                    |
 
 Every external service sits behind a small interface in `lib/server/providers/`,
 so swapping a provider means adding one file.

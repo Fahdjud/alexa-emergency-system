@@ -1,11 +1,7 @@
 /*
- * monitor-watch.ts: records the monitor's heartbeats and tells contact 1 when
- * it goes offline, and again when it is back.
- *
- * Why this file exists: a closed tab or a dead tablet means nothing is
- * listening, and the family would never know. The rule for "offline" is
- * lib/safety/monitor-health.ts; this file stores heartbeats and sends the
- * messages. It uses the same injected dependencies as the escalation runner.
+ * Records heartbeats and warns the first contact when the monitor goes
+ * offline, and again when it is back. The offline rule itself lives in
+ * lib/safety/monitor-health.ts.
  */
 import "server-only"
 

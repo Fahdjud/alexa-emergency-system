@@ -1,11 +1,6 @@
 /*
- * capture-worklet.js: an AudioWorklet that forwards raw microphone samples to
- * the page in small chunks.
- *
- * Why this file exists: the demo's Web Speech API only returns text, never
- * audio, so it cannot fill a rolling buffer or feed a sound classifier.
- * AudioWorklets must be loaded by URL as plain JavaScript, so this file lives
- * in public/ instead of being bundled TypeScript.
+ * AudioWorklet that forwards raw microphone samples to the page in small
+ * chunks. Worklets are loaded by URL, so this is plain JavaScript in public/.
  */
 class CaptureProcessor extends AudioWorkletProcessor {
   constructor(options) {
@@ -20,7 +15,10 @@ class CaptureProcessor extends AudioWorkletProcessor {
 
     let read = 0
     while (read < channel.length) {
-      const count = Math.min(channel.length - read, this.chunk.length - this.filled)
+      const count = Math.min(
+        channel.length - read,
+        this.chunk.length - this.filled
+      )
       this.chunk.set(channel.subarray(read, read + count), this.filled)
       this.filled += count
       read += count

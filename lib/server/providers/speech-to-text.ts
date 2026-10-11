@@ -1,11 +1,7 @@
 /*
- * speech-to-text.ts: the SpeechToText interface and the factory that picks
- * the configured provider (STT_PROVIDER).
- *
- * Why this file exists: the app had no transcription. The browser's speech
- * recognition cannot transcribe a recorded snippet, so the snippet is sent
- * here. Keeping the provider behind an interface means Groq can be swapped
- * (OpenAI, Deepgram, on-device Whisper) by adding one file.
+ * SpeechToText interface and provider selection (STT_PROVIDER). Browser
+ * recognition cannot transcribe a recorded snippet, so snippets are
+ * transcribed on the server.
  */
 import "server-only"
 

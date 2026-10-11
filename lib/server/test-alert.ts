@@ -1,13 +1,8 @@
 /*
- * test-alert.ts: sends a practice alert to every contact, for "Test the
- * system" on the monitor.
- *
- * Why this file exists: families should see an alert, and contacts should
- * try the reply buttons, before a real emergency. The test goes through the
- * same channels as a real alert (Telegram buttons, the email answer link,
- * the answer spoken at home), but every message says TEST, and it is stored
- * as already "unacknowledged" so the escalation never picks it up: one
- * round, no reminders, nothing repeated.
+ * The practice alert behind "Test the system". It uses the same channels as a
+ * real alert (Telegram buttons, the email answer link, the answer spoken at
+ * home), but every message is marked TEST and the incident is stored as
+ * already unacknowledged, so the scheduler never escalates or repeats it.
  */
 import "server-only"
 

@@ -1,10 +1,6 @@
 /*
- * store-memory.ts: an IncidentStore that keeps everything in this server
- * process's memory.
- *
- * Why this file exists: it lets escalation run and be tested locally with no
- * database. Data is lost on restart, and on Vercel each function instance has
- * its own memory, so production uses Supabase (STORE_PROVIDER=supabase).
+ * In-memory IncidentStore for local development and tests. Data is lost on
+ * restart and is not shared between serverless instances.
  */
 import "server-only"
 

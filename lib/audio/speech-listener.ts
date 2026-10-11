@@ -1,17 +1,11 @@
 /*
- * speech-listener.ts: the SpeechListener interface, plus an implementation
- * with the browser's Web Speech API that listens continuously and reports
- * what it hears.
+ * Continuous speech recognition with the Web Speech API, behind a small
+ * interface. Chrome ends a recognition session after silence or a network
+ * error, so the listener restarts it and ignores events from stale sessions.
  *
- * Why this file exists: the demo's voice input (components/alexa/
- * alexa-assistant.tsx) recognises one sentence after a button press and
- * keeps its types private. Monitoring needs recognition that never stops:
- * Chrome ends a session after silence or a network blip, so this restarts it.
- *
- * Choice: Web Speech in Chrome supports Arabic (ar-SA) and English with no
- * download. Trade-off: Chrome sends the audio to Google for recognition while
- * listening. It is not stored by us. The interface lets an on-device engine
- * (e.g. Vosk) replace it later.
+ * Chrome supports Arabic (ar-SA) and English without a download, but sends
+ * audio to Google for recognition while listening. The interface allows an
+ * on-device engine (for example Vosk) to replace it.
  */
 
 export type SpeechListenerStatus = "off" | "on" | "unsupported" | "blocked"

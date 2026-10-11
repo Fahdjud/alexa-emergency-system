@@ -1,16 +1,9 @@
 /*
- * POST /api/telegram/webhook: receives what contacts send to the bot.
- * - Start from an invite link (t.me/<bot>?start=<code>) links their chat to
- *   their contact entry.
- * - A tap on an alert's reply button ("On my way", "Calling now", "I'm
- *   handling it") answers the alert: escalation stops, the others are told,
- *   and the monitor at home says who is coming.
- *
- * Why this file exists: a Telegram bot can only message people who started a
- * chat with it, and nobody should have to find and type chat IDs. Telegram
- * includes TELEGRAM_WEBHOOK_SECRET in a header on every call, which proves
- * the request came from Telegram. A button tap is trusted only from the chat
- * of a registered contact.
+ * POST /api/telegram/webhook: updates from the Telegram bot.
+ * - "/start <code>" from an invite link links the chat to that contact.
+ * - A reply button (On my way, Calling now, I'm handling it) answers an
+ *   alert, from a registered contact's chat only.
+ * Telegram sends TELEGRAM_WEBHOOK_SECRET in a header with every update.
  */
 import {
   alertClosedText,

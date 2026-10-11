@@ -1,10 +1,6 @@
 /*
- * vitest.config.ts: unit test setup for the safety assistant's pure logic.
- *
- * Why this file exists: the repo had no test runner. Vitest runs the
- * TypeScript files directly. The "@/" alias mirrors tsconfig.json so tests
- * import modules the same way the app does, and "server-only" (which throws
- * outside a Next.js server build) becomes its no-op variant.
+ * Vitest configuration. The "@/" alias mirrors tsconfig.json, and
+ * "server-only" resolves to its no-op build so server modules can be tested.
  */
 import { fileURLToPath } from "node:url"
 import { defineConfig } from "vitest/config"

@@ -1,13 +1,9 @@
 "use client"
 
 /*
- * confirmation-prompt.tsx: the on-screen "Are you okay?" card with large
- * "I'm fine" / "Get help" buttons and a countdown.
- *
- * Why this file exists: the question is spoken, but speech recognition can
- * fail (noise, accent, a soft voice). Big touch buttons are the fallback, and
- * the countdown shows when help will be called automatically. The existing
- * components have nothing like it.
+ * Full-screen "Are you okay?" card with large "I'm fine" / "Get help" buttons
+ * and a countdown. The question is spoken, but recognition can fail in noise
+ * or with a soft voice; the buttons are the fallback.
  */
 import { useEffect, useState } from "react"
 

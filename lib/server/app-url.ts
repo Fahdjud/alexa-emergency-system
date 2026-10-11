@@ -1,9 +1,6 @@
 /*
- * app-url.ts: the public address of this deployment, for links in alerts.
- *
- * Why this file exists: alerts are opened on a contact's phone, so links must
- * be absolute. Production uses APP_BASE_URL; Vercel previews use the
- * VERCEL_URL that Vercel provides; local development uses localhost.
+ * The public base URL used in alert links: APP_BASE_URL in production,
+ * VERCEL_URL on preview deployments, localhost in development.
  */
 import "server-only"
 

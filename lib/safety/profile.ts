@@ -1,13 +1,7 @@
 /*
- * profile.ts: the household's answers from the setup screen (what to watch
- * for, and how careful the AI should be) and the pure rules that turn them
- * into detection settings.
- *
- * Why this file exists: one fixed set of thresholds cannot suit every home.
- * Falls matter most for an older person living alone; a family with a baby
- * may switch crying off. Keeping the effect of each answer in small pure
- * functions makes it easy to test and to explain: "High" lowers that
- * incident's thresholds and always asks; "Off" ignores it.
+ * The household's setup answers (sensitivity per incident and how cautious the
+ * AI check is) and the rules that turn them into detection settings. "High"
+ * lowers an incident's thresholds and always asks; "Off" ignores it.
  */
 import { z } from "zod"
 

@@ -1,10 +1,6 @@
 /*
- * notifier.ts: the Notifier interface and the factory that picks the
- * configured channel (NOTIFIER_PROVIDER).
- *
- * Why this file exists: the app had no way to reach anyone. Alerts go through
- * this interface, so Telegram can be swapped for SMS, WhatsApp or email by
- * adding one file. The console notifier lets everything run locally.
+ * Notifier interface and provider selection (NOTIFIER_PROVIDER). Another
+ * channel (SMS, WhatsApp) can be added as one more implementation.
  */
 import "server-only"
 

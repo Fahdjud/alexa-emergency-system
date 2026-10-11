@@ -1,10 +1,6 @@
 /*
- * schemas.ts: runtime validation for data that crosses the network: triggers
- * sent by the monitor page, and the classification the server returns.
- *
- * Why this file exists: TypeScript types vanish at runtime. Anything arriving
- * over HTTP is untrusted, so the API routes validate it with these schemas,
- * and the client validates the response the same way.
+ * Runtime validation for data that crosses the network: triggers sent by the
+ * monitor and the classification returned by the server.
  */
 import { z } from "zod"
 
@@ -18,8 +14,8 @@ const incidentIds = INCIDENTS.map((incident) => incident.id) as [
 ]
 
 export const LanguageSchema = z.enum(LANGUAGES as [Language, ...Language[]])
-export const IncidentTypeIdSchema = z.enum(incidentIds)
-export const SeveritySchema = z.enum(["critical", "high", "medium"])
+const IncidentTypeIdSchema = z.enum(incidentIds)
+const SeveritySchema = z.enum(["critical", "high", "medium"])
 
 export const TriggerMatchSchema = z.discriminatedUnion("source", [
   z.object({

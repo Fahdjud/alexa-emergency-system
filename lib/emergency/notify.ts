@@ -7,7 +7,7 @@ import type { EmergencyEvent, NotificationResult } from "@/types/emergency"
 export async function notifyEmergency(
   event: EmergencyEvent
 ): Promise<NotificationResult> {
-  // Contacts now live in the shared store (the JSON file could not be written on Vercel).
+  // Email contacts are stored with the other contacts in the configured store.
   const contacts = (await (await getStore()).listContacts()).filter(
     (contact) => contact.email
   )

@@ -1,10 +1,7 @@
 /*
- * invite-code.ts: creates the code in a contact's Telegram invite link
- * (t.me/<bot>?start=<code>).
- *
- * Why this file exists: both stores (memory and Supabase) create contacts, and
- * the code must be unguessable, because whoever opens the link becomes that
- * contact. Telegram start payloads allow A-Z a-z 0-9 _ - up to 64 characters.
+ * Random codes for Telegram invite links (t.me/<bot>?start=<code>). Opening a
+ * link registers that chat as the contact, so codes must be unguessable.
+ * Telegram allows A-Z a-z 0-9 _ - in start payloads.
  */
 import "server-only"
 

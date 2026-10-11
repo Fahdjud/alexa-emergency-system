@@ -1,9 +1,6 @@
 /*
- * audio-settings.ts: the numbers that shape audio capture.
- *
- * Why this file exists: the demo app never touches raw audio. These values
- * are shared by the capture code, the sound classifier and the snippet
- * upload, so they live in one place.
+ * Audio capture parameters shared by the capture pipeline, the sound
+ * classifier and snippet uploads.
  */
 
 /** 16 kHz mono is what YAMNet and Whisper expect, and keeps snippets small (~32 KB per second as WAV). */

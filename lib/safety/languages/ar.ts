@@ -1,12 +1,8 @@
 /*
- * ar.ts: the Arabic language pack, written for Saudi and Gulf speech, with
- * the common Modern Standard Arabic forms too.
- *
- * Why this file exists: everything the assistant listens for and says in
- * Arabic, in one place (see pack.ts for what each part means). Spelling
- * variants do not need separate entries: hamza forms (أ إ آ ا), ة/ه, ى/ي and
- * diacritics are ignored when matching. Dialect variants do (ما أقدر, مو
- * قادر, مب قادر, مش قادر).
+ * Arabic language pack, written for Saudi and Gulf speech, with common Modern
+ * Standard Arabic forms. Spelling variants (hamza forms, ة/ه, ى/ي, diacritics)
+ * are unified when matching, so only dialect variants need their own entries
+ * (ما أقدر, مو قادر, مب قادر, مش قادر).
  */
 import { EMERGENCY_NUMBERS } from "../region"
 import type { LanguagePack } from "./pack"

@@ -1,9 +1,5 @@
 /*
- * types.ts: shared types for the safety assistant (incidents, triggers,
- * contacts, escalation).
- *
- * Why this file exists: the repo's only types describe chat messages and demo
- * devices (components/alexa/types.ts). Nothing describes incidents.
+ * Shared types for incidents, triggers, replies and contacts.
  */
 
 import type { Language } from "./languages"
@@ -35,7 +31,7 @@ export type SoundTrigger = {
 export type IncidentDefinition = {
   id: IncidentTypeId
   label: string
-  /** One plain sentence for the setup screen: what the monitor listens for. */
+  /** Shown on the setup screen: what the monitor listens for. */
   description: string
   severity: Severity
   triggerSounds: SoundTrigger[]

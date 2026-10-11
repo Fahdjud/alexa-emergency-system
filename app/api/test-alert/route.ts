@@ -1,13 +1,8 @@
 /*
- * POST /api/test-alert: sends a practice alert (marked TEST) to every
- * contact, for "Test the system" on the monitor. Body: { language }.
- * Answers with the test's id, so the monitor can follow the replies like a
- * real alert, and who it reached.
- *
- * Why this file exists: lets a household check, before a real emergency,
- * that contacts get alerts and that their answer is heard at home. Device-
- * token protected. Refused while a real alert is open, and at most once
- * every 30 seconds.
+ * POST /api/test-alert: sends the practice alert for "Test the system"
+ * ({ language }) and returns its id and who it reached. Refused while a real
+ * alert is open and at most once every 30 seconds. Requires the household
+ * code.
  */
 import { z } from "zod"
 

@@ -1,10 +1,7 @@
 /*
- * POST /api/heartbeat: the monitor page says "I'm still here" every minute
- * ({ listening: boolean }).
- *
- * Why this file exists: without it, a closed tab or a dead tablet would go
- * unnoticed. The scheduler tells contact 1 when heartbeats stop, and this
- * route tells them when the monitor is back. Device-token protected.
+ * POST /api/heartbeat: the monitor reports every minute that it is running
+ * ({ listening }). The scheduler warns the first contact when heartbeats stop;
+ * this route tells them when the monitor is back.
  */
 import { z } from "zod"
 

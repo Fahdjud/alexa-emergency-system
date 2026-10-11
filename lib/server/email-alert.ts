@@ -1,13 +1,8 @@
 /*
- * email-alert.ts: emails an escalating incident to every contact subscribed
- * to the AWS SNS topic (the teammate's email layer in lib/aws/sns.ts).
- *
- * Why this file exists: the SNS layer only ran from the demo's "simulate
- * fall" button. This adapter lets real escalations from the safety monitor
- * send the same email, alongside the Telegram alerts, and lets the setup
- * screen sign a contact's email up to the topic. SNS sends one message to the
- * whole topic, so the email carries one answer link for the incident and the
- * page asks who is answering. Email is off unless AWS_SNS_TOPIC_ARN is set.
+ * Email delivery for escalations through the AWS SNS topic (lib/aws/sns.ts).
+ * SNS sends one message to every subscriber, so each email carries a single
+ * answer link for the incident and the answer page asks who is responding.
+ * Email is disabled unless AWS_SNS_TOPIC_ARN is set.
  */
 import "server-only"
 

@@ -1,11 +1,6 @@
 /*
- * store.ts: the IncidentStore interface (contacts, incidents, alerts, audio
- * snippets) and the factory that picks the configured store (STORE_PROVIDER).
- *
- * Why this file exists: the app had no persistence. Escalation must survive
- * the browser tab closing, so its state lives on the server. Everything goes
- * through this interface, so the in-memory store (development) and Supabase
- * (production) are interchangeable.
+ * IncidentStore interface and store selection (STORE_PROVIDER). Escalation
+ * state lives on the server so it survives the monitor tab closing.
  */
 import "server-only"
 

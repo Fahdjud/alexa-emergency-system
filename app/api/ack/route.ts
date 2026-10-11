@@ -1,12 +1,7 @@
 /*
- * POST /api/ack: a contact answers an incident from the /ack/[token] page:
- * "on-my-way", "calling" or "handling" (the form's `response` field).
- *
- * Why this file exists: acknowledging stops escalation, so it happens only on
- * an explicit button press (POST), never when a link is merely opened. Chat
- * apps and email open links on their own to build previews. The signed token
- * says which contact acknowledged; an email link (one per incident, sent to
- * everyone) instead takes the contact chosen on the page (`contact`).
+ * POST /api/ack: records a contact's answer from the /ack/[token] form
+ * (`response`: on-my-way, calling or handling). Personal links identify the
+ * contact; shared email links use the contact chosen on the page.
  */
 import { ANY_CONTACT, verifyAckToken } from "@/lib/server/ack-token"
 import { escalationDeps } from "@/lib/server/escalation-deps"

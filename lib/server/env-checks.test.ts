@@ -34,9 +34,9 @@ describe("checkEnvironment", () => {
     expect(report.deployment).toBe("local")
     expect(report.problems).toEqual([])
     expect(report.readyFor).toEqual({
-      "PR 6": true,
-      "PR 7": true,
-      "PR 8": true,
+      "AI check": true,
+      Alerts: true,
+      Database: true,
     })
     const serialized = JSON.stringify(report)
     for (const value of Object.values(valid))
@@ -45,7 +45,9 @@ describe("checkEnvironment", () => {
 
   it("requires APP_BASE_URL on production only", () => {
     expect(
-      checkEnvironment({ ...valid, VERCEL_ENV: "production" }).readyFor["PR 7"]
+      checkEnvironment({ ...valid, VERCEL_ENV: "production" }).readyFor[
+        "Alerts"
+      ]
     ).toBe(false)
     expect(
       resultFor(
@@ -161,7 +163,7 @@ describe("checkEnvironment", () => {
     ).toBe("invalid")
     const reused = checkEnvironment({ ...valid, CRON_SECRET: fakeSecret("a") })
     expect(reused.problems[0]).toMatch(/same value as MONITOR_DEVICE_TOKEN/)
-    expect(reused.readyFor["PR 6"]).toBe(false)
+    expect(reused.readyFor["AI check"]).toBe(false)
     expect(
       checkEnvironment({ ...valid, NEXT_PUBLIC_GROQ_API_KEY: "x" }).problems[0]
     ).toMatch(/NEXT_PUBLIC_GROQ_API_KEY/)
@@ -170,7 +172,7 @@ describe("checkEnvironment", () => {
   it("reports readiness per build step", () => {
     expect(
       checkEnvironment({ ...valid, SUPABASE_URL: undefined }).readyFor
-    ).toEqual({ "PR 6": true, "PR 7": true, "PR 8": false })
+    ).toEqual({ "AI check": true, Alerts: true, Database: false })
   })
 })
 

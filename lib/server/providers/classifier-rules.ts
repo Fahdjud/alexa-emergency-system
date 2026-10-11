@@ -1,11 +1,7 @@
 /*
- * classifier-rules.ts: a free, deterministic classifier that uses the same
- * phrase lists as the browser.
- *
- * Why this file exists: it is the fallback when the language model is down,
- * slow or switched off (CLASSIFIER_PROVIDER=rules). It never answers "none",
- * so without the model every trigger still reaches the "Are you okay?"
- * question.
+ * Deterministic fallback classifier using the same phrase lists as the
+ * browser. It never answers "none", so without the language model every
+ * trigger still reaches the confirmation question.
  */
 import { matchPhrase, pickMostSevere } from "@/lib/safety/match-trigger"
 import { severityFor } from "@/lib/safety/ai-check"

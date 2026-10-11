@@ -1,11 +1,8 @@
 /*
- * sound-classifier.ts: the SoundClassifier interface, plus its implementation
- * with Google's pretrained YAMNet model (521 everyday sound classes, ~4 MB)
- * running in the browser through MediaPipe.
- *
- * Why this file exists: nothing in the repo can recognise sounds. Running
- * YAMNet locally costs nothing per use and sends no audio anywhere. The
- * interface keeps the model swappable.
+ * Sound classification with Google's YAMNet (521 classes, about 4 MB) running
+ * in the browser through MediaPipe, behind a small interface so the model can
+ * be replaced. Inference is local: no audio is sent anywhere and there is no
+ * per-use cost.
  */
 import {
   AudioClassifier,

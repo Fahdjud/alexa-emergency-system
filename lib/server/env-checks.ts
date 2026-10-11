@@ -1,18 +1,13 @@
 /*
- * env-checks.ts: the list of environment variables the safety assistant needs,
- * and pure functions that check each one is present and correctly shaped.
- *
- * Why this file exists: the app had no env handling at all. Mistakes like a
- * pasted URL path, quotes around a value or the wrong Supabase key only show up
- * much later as confusing provider errors. These checks catch them up front.
- * They never return a value, only a status and a hint, so the report is safe
- * to show. They take the env as an argument (no process.env, no network), so
- * they can be tested without Next.js.
+ * The environment variables the safety assistant reads, with pure checks for
+ * presence and shape (pasted paths, quotes, the wrong Supabase key, a topic in
+ * another region). Results contain a status and a hint, never a value, so the
+ * report is safe to display.
  */
 
 export type EnvGroup =
   "AI providers" | "Alerts" | "Email alerts" | "Database" | "Generated secrets"
-export type BuildStep = "PR 6" | "PR 7" | "PR 8"
+export type Feature = "AI check" | "Alerts" | "Database"
 export type CheckStatus = "ok" | "warning" | "missing" | "invalid"
 
 type Outcome = { status: "ok" | "warning" | "invalid"; hint?: string }
@@ -20,7 +15,7 @@ type Outcome = { status: "ok" | "warning" | "invalid"; hint?: string }
 type EnvVarSpec = {
   name: string
   group: EnvGroup
-  neededFrom: BuildStep
+  neededFor: Feature
   /** "always": empty is fine everywhere. "outside-production": empty is fine except on the Production deployment. */
   optional?: "always" | "outside-production"
   check: (value: string) => Outcome
@@ -29,7 +24,7 @@ type EnvVarSpec = {
 export type EnvVarResult = {
   name: string
   group: EnvGroup
-  neededFrom: BuildStep
+  neededFor: Feature
   status: CheckStatus
   hint?: string
 }
@@ -38,12 +33,12 @@ export type EnvReport = {
   deployment: string
   variables: EnvVarResult[]
   problems: string[]
-  readyFor: Record<BuildStep, boolean>
+  readyFor: Record<Feature, boolean>
 }
 
 type Env = Record<string, string | undefined>
 
-const BUILD_STEPS: BuildStep[] = ["PR 6", "PR 7", "PR 8"]
+const FEATURES: Feature[] = ["AI check", "Alerts", "Database"]
 
 const ok: Outcome = { status: "ok" }
 const invalid = (hint: string): Outcome => ({ status: "invalid", hint })
@@ -169,134 +164,134 @@ function checkAwsSecretKey(value: string): Outcome {
     : invalid("Secret access keys are 40 characters long.")
 }
 
-export const ENV_VARS: EnvVarSpec[] = [
+const ENV_VARS: EnvVarSpec[] = [
   {
     name: "STT_PROVIDER",
     group: "AI providers",
-    neededFrom: "PR 6",
+    neededFor: "AI check",
     optional: "always",
     check: oneOf("groq", "none"),
   },
   {
     name: "CLASSIFIER_PROVIDER",
     group: "AI providers",
-    neededFrom: "PR 6",
+    neededFor: "AI check",
     optional: "always",
     check: oneOf("anthropic", "rules"),
   },
   {
     name: "ANTHROPIC_API_KEY",
     group: "AI providers",
-    neededFrom: "PR 6",
+    neededFor: "AI check",
     check: checkAnthropicKey,
   },
   {
     name: "GROQ_API_KEY",
     group: "AI providers",
-    neededFrom: "PR 6",
+    neededFor: "AI check",
     check: prefixed("gsk_", "Groq"),
   },
   {
     name: "NOTIFIER_PROVIDER",
     group: "Alerts",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     optional: "always",
     check: oneOf("telegram", "console"),
   },
   {
     name: "TELEGRAM_BOT_TOKEN",
     group: "Alerts",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     check: checkTelegramToken,
   },
   {
     name: "TELEGRAM_BOT_USERNAME",
     group: "Alerts",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     check: checkTelegramUsername,
   },
   {
     name: "APP_BASE_URL",
     group: "Alerts",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     optional: "outside-production",
     check: checkBaseUrl,
   },
   {
     name: "AWS_REGION",
     group: "Email alerts",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     optional: "always",
     check: checkAwsRegion,
   },
   {
     name: "AWS_SNS_TOPIC_ARN",
     group: "Email alerts",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     optional: "always",
     check: checkSnsTopicArn,
   },
   {
     name: "AWS_ACCESS_KEY_ID",
     group: "Email alerts",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     optional: "always",
     check: checkAwsAccessKeyId,
   },
   {
     name: "AWS_SECRET_ACCESS_KEY",
     group: "Email alerts",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     optional: "always",
     check: checkAwsSecretKey,
   },
   {
     name: "STORE_PROVIDER",
     group: "Database",
-    neededFrom: "PR 8",
+    neededFor: "Database",
     optional: "always",
     check: oneOf("supabase", "memory"),
   },
   {
     name: "SUPABASE_URL",
     group: "Database",
-    neededFrom: "PR 8",
+    neededFor: "Database",
     check: checkSupabaseUrl,
   },
   {
     name: "SUPABASE_SERVICE_ROLE_KEY",
     group: "Database",
-    neededFrom: "PR 8",
+    neededFor: "Database",
     check: checkSupabaseSecretKey,
   },
   {
     name: "MONITOR_DEVICE_TOKEN",
     group: "Generated secrets",
-    neededFrom: "PR 6",
+    neededFor: "AI check",
     check: checkGeneratedSecret,
   },
   {
     name: "ACK_TOKEN_SECRET",
     group: "Generated secrets",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     check: checkGeneratedSecret,
   },
   {
     name: "CRON_SECRET",
     group: "Generated secrets",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     check: checkGeneratedSecret,
   },
   {
     name: "TELEGRAM_WEBHOOK_SECRET",
     group: "Generated secrets",
-    neededFrom: "PR 7",
+    neededFor: "Alerts",
     check: checkGeneratedSecret,
   },
 ]
 
 /** Checks one variable. Problems common to every value (spaces, quotes) are caught before the specific check. */
-export function checkVariable(
+function checkVariable(
   spec: EnvVarSpec,
   rawValue: string | undefined,
   isProduction: boolean
@@ -304,7 +299,7 @@ export function checkVariable(
   const base = {
     name: spec.name,
     group: spec.group,
-    neededFrom: spec.neededFrom,
+    neededFor: spec.neededFor,
   }
 
   if (rawValue === undefined || rawValue === "") {
@@ -348,7 +343,7 @@ export function checkEnvironment(env: Env): EnvReport {
     deployment,
     variables,
     problems,
-    readyFor: readinessByStep(variables, problems.length === 0),
+    readyFor: readinessByFeature(variables, problems.length === 0),
   }
 }
 
@@ -411,20 +406,20 @@ function findSupabaseProjectMismatch(env: Env): string[] {
   ]
 }
 
-/** A step is ready when every variable it needs, and every earlier step needs, is usable. */
-function readinessByStep(
+/** A feature is ready when its variables, and those of the features before it, are usable. */
+function readinessByFeature(
   variables: EnvVarResult[],
   noProblems: boolean
-): Record<BuildStep, boolean> {
+): Record<Feature, boolean> {
   const usable = (result: EnvVarResult) =>
     result.status === "ok" || result.status === "warning"
-  const entries = BUILD_STEPS.map((step, index) => {
+  const entries = FEATURES.map((step, index) => {
     const needed = variables.filter(
-      (result) => BUILD_STEPS.indexOf(result.neededFrom) <= index
+      (result) => FEATURES.indexOf(result.neededFor) <= index
     )
     return [step, noProblems && needed.every(usable)] as const
   })
-  return Object.fromEntries(entries) as Record<BuildStep, boolean>
+  return Object.fromEntries(entries) as Record<Feature, boolean>
 }
 
 function parseUrl(value: string): URL | null {

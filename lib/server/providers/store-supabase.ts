@@ -1,11 +1,7 @@
 /*
- * store-supabase.ts: the IncidentStore backed by Supabase (Postgres for
- * contacts and incidents, private Storage for audio snippets).
- *
- * Why this file exists: on Vercel every request may run in a different
- * function instance, so the in-memory store cannot hold escalation state in
- * production. Tables are created by db/schema.sql. The secret service_role
- * key is used only here, on the server.
+ * IncidentStore backed by Supabase: Postgres for contacts and incidents, a
+ * private Storage bucket for snippets. Tables are created by db/schema.sql.
+ * The service-role key is used only on the server.
  */
 import "server-only"
 
@@ -155,8 +151,8 @@ export function createSupabaseStore(db: SupabaseClient): IncidentStore {
       }
       const row = incidentPatchToRow(patch)
       let { data, error } = await update(row)
-      // A database set up before contact replies existed has no ack_response
-      // column. Acknowledging must still work, so save the rest.
+      // Databases created before ack_response was added lack the column;
+      // the acknowledgement itself must still be saved.
       if (error?.message.includes("ack_response") && "ack_response" in row) {
         console.warn("Run db/schema.sql again to store contact replies.")
         const withoutReply = { ...row }

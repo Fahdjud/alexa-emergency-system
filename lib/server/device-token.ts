@@ -1,11 +1,7 @@
 /*
- * device-token.ts: checks the "Authorization: Bearer <MONITOR_DEVICE_TOKEN>"
- * header on requests from the monitor page.
- *
- * Why this file exists: the app had no API routes and no authentication. Every
- * safety API route needs the same check, so it lives here once, along with
- * the constant-time comparison used for the other shared secrets. Comparing SHA-256 digests with
- * timingSafeEqual avoids leaking the token through response timing.
+ * Checks the "Authorization: Bearer <MONITOR_DEVICE_TOKEN>" header used by
+ * every monitor route, and provides the constant-time comparison used for all
+ * shared secrets (SHA-256 digests compared with timingSafeEqual).
  */
 import "server-only"
 
@@ -13,7 +9,7 @@ import { createHash, timingSafeEqual } from "node:crypto"
 
 import { getMonitorDeviceToken } from "./env"
 
-export function hasValidDeviceToken(
+function hasValidDeviceToken(
   authorizationHeader: string | null,
   expectedToken: string
 ): boolean {

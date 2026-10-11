@@ -1,11 +1,7 @@
 /*
- * stored-value.ts: a small value remembered in this browser (localStorage)
- * that React components can subscribe to with useSyncExternalStore.
- *
- * Why this file exists: the monitor remembers the chosen language and the
- * device token across reloads. Reading localStorage during render breaks
- * server rendering, and storage can be unavailable (private windows), so
- * this handles both once. Values live only in this browser.
+ * A localStorage-backed value that components can read with
+ * useSyncExternalStore. Handles server rendering and unavailable storage
+ * (private windows).
  */
 
 export type StoredValue<T> = {

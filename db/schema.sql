@@ -1,14 +1,13 @@
--- db/schema.sql: the database for the safety assistant (Supabase / Postgres).
+-- Database schema for the safety assistant (Supabase / Postgres).
 --
--- Why this file exists: the app had no database. Escalation must keep going
--- when the browser tab closes, so contacts, incidents and the monitor's
--- heartbeat live here. Run it once in Supabase -> SQL Editor. It is safe to
--- run again. Then run db/schedule.sql to start the escalation scheduler.
+-- Contacts, incidents and the monitor's heartbeat are stored here so that
+-- escalation continues when the monitor tab closes. The script is idempotent:
+-- run it in the Supabase SQL Editor on first setup and again after upgrades,
+-- then run db/schedule.sql to start the scheduler.
 --
--- Security: row-level security is on with no policies, so the public
--- (anon / publishable) key can read and write nothing. Only the server, using
--- the secret service_role key, can. Times are stored as epoch milliseconds,
--- the same as the app's records.
+-- Row-level security is enabled with no policies, so the anon and
+-- publishable keys have no access; only the server's service-role key does.
+-- Timestamps are epoch milliseconds.
 
 create table if not exists contacts (
   id uuid primary key default gen_random_uuid(),
@@ -38,25 +37,23 @@ create table if not exists incidents (
   acknowledged_at_ms bigint
 );
 
--- Optional email alerts (AWS SNS). Added after the first release, so they are
--- separate statements that also upgrade an existing table.
+-- Email alerts (AWS SNS). Separate statements so existing tables are upgraded.
 alter table contacts add column if not exists email text;
 alter table contacts add column if not exists email_status text
   check (email_status in ('pending', 'failed'));
 
--- How the acknowledging contact answered (added after the first release).
+-- How the acknowledging contact answered.
 alter table incidents add column if not exists ack_response text
   check (ack_response in ('handling', 'on-my-way', 'calling'));
 
--- Languages come from the app's language packs, so the database does not
--- limit them (this removes the en/ar-only check from earlier versions).
+-- Languages are defined by the app's language packs; drop the old en/ar check.
 alter table incidents drop constraint if exists incidents_language_check;
 
 -- The scheduler looks up open incidents by status every 30 seconds.
 create index if not exists incidents_status_idx on incidents (status);
 create index if not exists incidents_created_idx on incidents (created_at_ms);
 
--- One row: this demo has one household and one monitor.
+-- A single row: one household, one monitor.
 create table if not exists monitor_status (
   id text primary key default 'home' check (id = 'home'),
   last_seen_ms bigint not null,
@@ -68,7 +65,7 @@ alter table contacts enable row level security;
 alter table incidents enable row level security;
 alter table monitor_status enable row level security;
 
--- Private bucket for the audio snippets (never public; the server reads them with the secret key).
+-- Private bucket for audio snippets, read only by the server.
 insert into storage.buckets (id, name, public)
 values ('incident-snippets', 'incident-snippets', false)
 on conflict (id) do nothing;

@@ -1,15 +1,8 @@
 /*
- * classifier-anthropic.ts: classifies a transcribed snippet with Claude Haiku
- * 4.5, returning structured output (incident type, confidence, quote).
- *
- * Why this file exists: keyword rules cannot tell a person saying "help me"
- * from the TV saying it. A small, cheap model can, for about $0.002 per check
- * (roughly 1,000 input and 100 output tokens at $1 / $5 per million). Only
- * triggers configured with aiCheck reach it.
- *
- * Safety rules applied after the model answers (lib/safety/ai-check.ts):
- * severity comes from the config, a quote is kept only if it is really in the
- * transcript, and only a confident "none" skips the question.
+ * Classifies a transcript with Claude Haiku 4.5 using structured output
+ * (incident type, confidence, supporting quote). Keyword rules cannot tell a
+ * person saying "help me" from the TV; a small model can, at roughly $0.002
+ * per check. The rules in lib/safety/ai-check.ts are applied to its answer.
  */
 import "server-only"
 

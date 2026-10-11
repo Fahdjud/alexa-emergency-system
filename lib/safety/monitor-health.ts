@@ -1,12 +1,9 @@
 /*
- * monitor-health.ts: decides from the monitor's heartbeats whether it is
- * running, deliberately paused, or silently offline.
- *
- * Why this file exists: if the monitor tab closes, the microphone is blocked
- * or the device loses power, nothing listens, and "no alerts" looks the same
- * as "all is well". The server therefore expects a heartbeat every minute and
- * tells contact 1 when it stops. Pressing "Stop listening" is a deliberate
- * pause, not an outage, so it does not alert.
+ * Decides from heartbeats whether the monitor is running, deliberately paused
+ * or offline. A closed tab or a device without power looks the same as a quiet
+ * home, so the server expects a heartbeat every minute and warns the first
+ * contact when they stop. Pausing on purpose sends a final "not listening"
+ * beat and does not raise a warning.
  */
 
 export const HEARTBEAT_EVERY_MS = 60_000

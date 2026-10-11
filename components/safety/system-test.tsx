@@ -1,13 +1,9 @@
 "use client"
 
 /*
- * system-test.tsx: the "Test the system" card. A button starts the test;
- * each check then shows its result with a tip when something fails.
- *
- * Why this file exists: a household should know the monitor works before
- * relying on it, and contacts should try the reply buttons once while
- * everyone is calm. It is also the safe way to show the whole flow in a
- * demo. The checks themselves live in hooks/use-safety-monitor.ts (runTest).
+ * The "Test the system" card. Shows each check (microphone, voice,
+ * recognition, contacts) with its result and a hint when something fails.
+ * The checks run in useSafetyMonitor().runTest.
  */
 import { useState } from "react"
 import {
