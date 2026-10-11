@@ -1,12 +1,8 @@
 /*
- * GET /api/contacts: the emergency contacts, in alert order, with their
- * Telegram invite links and email status, and whether email alerts are set up
- * on this deployment. POST /api/contacts: adds one ({ name, priority }).
- *
- * Why this file exists: escalation needs people to alert, and each person
- * must open their invite link once to connect Telegram. This is the minimal
- * way to manage that from the monitor page; teammates can build a nicer UI on
- * it. Device-token protected. Chat IDs are never returned.
+ * GET /api/contacts: contacts in alert order, with invite links, email status
+ * and whether email alerts are configured. POST /api/contacts: adds a contact
+ * ({ name, priority }). Requires the household code; chat IDs are never
+ * returned.
  */
 import { z } from "zod"
 

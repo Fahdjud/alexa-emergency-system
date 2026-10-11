@@ -1,11 +1,7 @@
 /*
- * safety-api.ts: the monitor page's calls to the escalation API (report an
- * incident, send the answer, read its status, manage contacts).
- *
- * Why this file exists: keeps fetch details, the device token header and
- * error handling out of the React hook. Every call returns null (or false) on
- * failure instead of throwing, because the monitor must keep working when
- * the network does not.
+ * Client calls to the safety API. Every call resolves to null (or false) on
+ * failure instead of throwing, so the monitor keeps working when the network
+ * does not.
  */
 import { encodeWav } from "@/lib/audio/wav"
 import type { Classification } from "@/lib/safety/schemas"

@@ -1,11 +1,7 @@
 /*
- * match-trigger.ts: decides whether recent sounds or recognised speech match
- * an incident in the config.
- *
- * Why this file exists: the demo app has no detection logic. Keeping matching
- * as pure functions (no microphone, no models) means the rules can be tested
- * and explained on their own, and work the same in the browser and on the
- * server (the rules-based fallback classifier reuses matchPhrase).
+ * Matches classifier frames and recognised speech against the incident list.
+ * Pure functions, shared by the browser and by the server's rules-based
+ * classifier.
  */
 import { INCIDENTS, SEVERITY_RANK } from "./incidents"
 import { LANGUAGE_PACKS, LANGUAGES } from "./languages"

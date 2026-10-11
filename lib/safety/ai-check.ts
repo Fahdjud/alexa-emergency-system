@@ -1,10 +1,9 @@
 /*
- * ai-check.ts: the plain rules applied to the language model's answer.
- *
- * Why this file exists: the model may only *filter out* obvious false alarms
- * (the TV saying "help"). It must never be able to silently drop a real
- * incident, invent a quote, or change how urgent an incident is. Those rules
- * live here as small pure functions, not in a prompt.
+ * Rules applied to the language model's verdict. The model may only filter out
+ * obvious false alarms (for example the TV saying "help"); it can never drop a
+ * trigger without a transcript, invent a quote, or change an incident's
+ * severity. Keeping these rules in code rather than in the prompt makes them
+ * testable and impossible to talk around.
  */
 import { getIncident } from "./incidents"
 import { containsPhrase, normalizeText } from "./normalize-text"
@@ -12,7 +11,7 @@ import type { Classification } from "./schemas"
 import type { IncidentTypeId } from "./types"
 
 /** The model must be at least this sure that nothing is wrong before we skip asking. */
-export const DISMISS_CONFIDENCE = 0.8
+const DISMISS_CONFIDENCE = 0.8
 /** No household setting may let the model dismiss on a weaker hunch than this. */
 const MIN_DISMISS_CONFIDENCE = 0.7
 

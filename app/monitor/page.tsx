@@ -1,8 +1,5 @@
 /*
- * /monitor: the always-on safety monitor page.
- *
- * Why this file exists: "/" is the existing Alexa demo, which stays as it is.
- * The monitor is a separate route that reuses the same styling and components.
+ * /monitor: the always-on safety monitor.
  */
 import type { Metadata } from "next"
 

@@ -1,11 +1,7 @@
 /*
- * languages/index.ts: the languages the assistant speaks.
- *
- * Why this file exists: it is the one list of language packs. To add a
- * language, copy en.ts to <code>.ts, translate it with a native speaker,
- * import it here and add it to LANGUAGE_PACKS. The language switch, speech
- * recognition, matching, replies, spoken lines and the scorecard all pick it
- * up from here.
+ * The registry of language packs. Adding a language means adding a pack file
+ * and listing it in LANGUAGE_PACKS; the language switch, recognition, matching,
+ * spoken lines and the scorecard all read from here.
  */
 import { ar } from "./ar"
 import { en } from "./en"

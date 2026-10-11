@@ -1,10 +1,6 @@
 /*
- * env.ts: the only place server code reads process.env for the safety assistant.
- *
- * Why this file exists: the app had no server-side configuration. Keeping env
- * access in one file means secrets are read in one place, and the
- * "server-only" import makes the build fail if this file is ever imported into
- * browser code. Later PRs add typed readers for each provider here.
+ * Typed access to the server's environment variables. The "server-only"
+ * import makes the build fail if this module is ever imported by client code.
  */
 import "server-only"
 

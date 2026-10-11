@@ -1,11 +1,7 @@
 /*
- * contact-view.ts: what the monitor page may see of a contact.
- *
- * Why this file exists: two routes return contacts (the list, and saving an
- * email), and both must hide the same things. Telegram chat IDs are never
- * returned; the invite link is, so it can be shared. A contact counts as
- * connected when they can be alerted on any channel: Telegram, or an email
- * address they have confirmed with AWS.
+ * The public view of a contact returned to the monitor. Telegram chat IDs are
+ * never exposed. A contact is "connected" when reachable on any channel:
+ * Telegram, or an email address confirmed with AWS.
  */
 import "server-only"
 

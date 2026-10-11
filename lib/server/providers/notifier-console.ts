@@ -1,9 +1,6 @@
 /*
- * notifier-console.ts: a Notifier that prints alerts to the server log.
- *
- * Why this file exists: escalation can be developed and tested without a
- * Telegram bot or real contacts. It is the default when NOTIFIER_PROVIDER is
- * empty.
+ * A notifier that logs alerts instead of sending them. Default when
+ * NOTIFIER_PROVIDER is not set.
  */
 import "server-only"
 

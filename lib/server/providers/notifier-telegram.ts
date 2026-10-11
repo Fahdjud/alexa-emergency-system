@@ -1,11 +1,8 @@
 /*
- * notifier-telegram.ts: sends alerts through the Telegram Bot API.
- *
- * Why this file exists: Telegram is free, delivers instantly with a push
- * notification, works in Saudi Arabia, and supports a tap-to-acknowledge
- * button and an audio attachment. It is plain HTTPS, so no SDK is added.
- * A bot can only message people who pressed Start in a chat with it, which
- * is how contacts register (see app/api/telegram/webhook).
+ * Telegram Bot API notifier: free, instant push notifications, inline reply
+ * buttons and audio attachments, over plain HTTPS. A bot can only message
+ * users who have started a chat with it, which is how contacts register (see
+ * app/api/telegram/webhook).
  */
 import "server-only"
 

@@ -1,9 +1,6 @@
 /*
- * stt-groq.ts: speech-to-text with Whisper large-v3-turbo on Groq.
- *
- * Why this file exists: Groq is the cheapest fast hosted Whisper (roughly
- * $0.0003 to $0.001 per 21-second snippet) and handles Arabic and English.
- * It is one HTTP call, so no SDK is added.
+ * Speech-to-text with Whisper large-v3-turbo on Groq: fast, inexpensive
+ * (well under a cent per snippet) and good with Arabic and English.
  */
 import "server-only"
 

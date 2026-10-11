@@ -1,10 +1,7 @@
 /*
- * POST /api/incidents/[id]/response: the person's answer to "Are you okay?"
- * ({ answer: "fine" | "help" | "no-answer" }).
- *
- * Why this file exists: the answer decides whether the server cancels the
- * incident or starts alerting contacts. Alerts are sent after the response
- * (next/server `after`), so the monitor is not kept waiting on Telegram.
+ * POST /api/incidents/[id]/response: the answer to "Are you okay?"
+ * (fine, help or no-answer). Alerts are sent after the response with
+ * next/server `after`, so the monitor never waits on Telegram.
  */
 import { after } from "next/server"
 import { z } from "zod"

@@ -1,22 +1,17 @@
 /*
- * escalation-policy.ts: who to alert, and when, once an incident escalates.
- * Plain rules, no AI, no timers, no network.
+ * Who is alerted, and when, once an incident escalates. Pure functions: the
+ * server stores only how many steps have been sent, and each scheduler tick
+ * asks nextEscalationAction() what is due. Because the result depends only on
+ * its inputs, a missed or repeated tick cannot skip or duplicate an alert.
  *
- * Why this file exists: the app has no backend, and escalation must keep going
- * when the browser tab closes. The server stores only "how many steps were
- * sent", and a scheduled tick asks nextEscalationAction() what to do now.
- * Because the answer depends only on its inputs, a missed or doubled tick
- * cannot skip or repeat an alert.
- *
- * Rules (approved):
- * - critical: alert every contact at once, then repeat every 2 minutes.
- * - high:     alert contacts one at a time, 3 minutes each.
- * - medium:   alert contacts one at a time, 5 minutes each.
- * - Then alert everyone together, 3 more times, 5 minutes apart
- *   (critical repeats every 2 minutes instead).
- * - Nobody acknowledged after that: give up, mark the incident
- *   "unacknowledged", and the device tells the person to call 911.
- * - The first acknowledgement stops everything.
+ * - critical: every contact at once, repeated every 2 minutes.
+ * - high:     one contact at a time, 3 minutes apart.
+ * - medium:   one contact at a time, 5 minutes apart.
+ * - Then everyone together, three more times, 5 minutes apart (critical keeps
+ *   its 2-minute interval).
+ * - If nobody answers, the incident becomes "unacknowledged" and the monitor
+ *   tells the person to call the emergency number.
+ * - The first answer from a contact stops the sequence.
  */
 import type { Contact, Severity } from "./types"
 
@@ -24,14 +19,14 @@ const MINUTE = 60_000
 
 type SeverityRule = { mode: "all-at-once" | "one-by-one"; waitMs: number }
 
-export const ESCALATION_RULES: Record<Severity, SeverityRule> = {
+const ESCALATION_RULES: Record<Severity, SeverityRule> = {
   critical: { mode: "all-at-once", waitMs: 2 * MINUTE },
   high: { mode: "one-by-one", waitMs: 3 * MINUTE },
   medium: { mode: "one-by-one", waitMs: 5 * MINUTE },
 }
 
 /** After the first pass: alert everyone together this many more times. */
-export const EVERYONE_ROUNDS = { count: 3, waitMs: 5 * MINUTE }
+const EVERYONE_ROUNDS = { count: 3, waitMs: 5 * MINUTE }
 
 export type EscalationStep = {
   /** Milliseconds after escalation started. */

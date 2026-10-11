@@ -1,15 +1,10 @@
 "use client"
 
 /*
- * setup-wizard.tsx: the first-run setup, also reachable from Settings.
- * Five short steps: connect this device, choose what to watch for (Off /
- * Normal / High per incident), choose how careful the AI should be, add
- * emergency contacts, and finish.
- *
- * Why this file exists: every home is different. An older person living
- * alone needs falls on High; a home with a baby may switch crying off. The
- * answers are saved in this browser (lib/client/monitor-settings.ts) and turned
- * into detection settings by lib/safety/profile.ts.
+ * First-run setup, also opened from Settings: household code and language,
+ * sensitivity per incident, how cautious the AI check is, contacts, and a
+ * summary. Answers are stored in the browser (lib/client/monitor-settings.ts)
+ * and applied by lib/safety/profile.ts.
  */
 import { useState, type ReactNode } from "react"
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react"

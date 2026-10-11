@@ -1,12 +1,9 @@
 /*
- * scorecard.ts: measures how well the speech rules understand each language,
- * using the test sentences in its language pack.
- *
- * Why this file exists: "it works when we try it" is not a measure. This
- * gives every language three numbers: emergencies caught, everyday sentences
- * wrongly flagged, and answers to "Are you okay?" read correctly, plus the
- * exact sentences that failed. It covers the first, keyword layer only; the
- * AI check and the question filter out the rest. Run it with pnpm scorecard.
+ * Accuracy scorecard for the speech rules, computed from each language pack's
+ * test sentences: emergencies caught, everyday sentences wrongly flagged, and
+ * replies read correctly, with every failing sentence listed. It measures the
+ * keyword layer only; the AI check and the confirmation question come after
+ * it. Run with `pnpm scorecard`.
  */
 import { interpretReply } from "./confirmation"
 import { INCIDENTS } from "./incidents"

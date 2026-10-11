@@ -1,11 +1,6 @@
 /*
- * GET /api/incidents/[id]: the incident's current status, for the monitor
- * page to say "Sara is on the way", "Sara is calling you" or "Nobody
- * answered, call 911".
- *
- * Why this file exists: escalation runs on the server, so the monitor has to
- * ask how it is going. Returns only what the screen needs. Device-token
- * protected.
+ * GET /api/incidents/[id]: the incident's status and who answered, so the
+ * monitor can say "Sara is on the way" or tell the person to call for help.
  */
 import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { getStore } from "@/lib/server/providers/store"

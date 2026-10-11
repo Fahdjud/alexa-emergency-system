@@ -1,21 +1,12 @@
 /*
- * incidents.ts: THE list of incidents the assistant listens for. Adding an
- * incident means adding one entry here; no other file names incident types.
+ * The incidents the assistant listens for. Each entry is language-neutral:
+ * YAMNet sound classes (spelled exactly as YAMNet does), severity, and whether
+ * a trigger is checked by the language model before asking. Trigger phrases
+ * and the confirmation question come from the language packs.
  *
- * Why this file exists: the demo app only has canned chat replies
- * (components/alexa/data.ts). Nothing describes what to listen for, what to
- * ask, or how urgent each situation is.
- *
- * How to read an entry:
- * - triggerSounds: YAMNet class names, spelled exactly as YAMNet spells them.
- * - Phrases, word pairs and the "Are you okay?" question are per language, so
- *   they live in the language packs (lib/safety/languages) and are added to
- *   each entry below.
- * - aiCheck: whether a trigger from that source is first transcribed and
- *   checked by the language model (to filter out the TV, for example). Falls,
- *   alarms and glass go straight to the question: there is nothing useful to
- *   transcribe, and speed matters more.
- * - No entry diagnoses anything. Labels describe what was heard or said.
+ * The AI check is skipped for alarms, thuds and glass: there is nothing useful
+ * to transcribe and asking quickly matters more. Labels describe what was
+ * heard or said; nothing here is a diagnosis.
  */
 import { LANGUAGE_PACKS, LANGUAGES } from "./languages"
 import type {

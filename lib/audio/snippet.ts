@@ -1,10 +1,6 @@
 /*
- * snippet.ts: builds the audio snippet for one trigger: the buffered seconds
- * before it, plus a few seconds after.
- *
- * Why this file exists: this is the only audio that ever leaves the device
- * (for transcription and for the alert), so its rules live in one small pure
- * object: start from a snapshot, add incoming chunks until enough, stop.
+ * Builds the audio snippet for a trigger: the buffered seconds before it plus
+ * a few seconds after. This snippet is the only audio that leaves the device.
  */
 
 export class SnippetCollector {

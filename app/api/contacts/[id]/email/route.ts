@@ -1,13 +1,7 @@
 /*
- * PUT /api/contacts/[id]/email: saves a contact's email address ({ email })
- * and signs it up to the AWS SNS topic, so alerts are emailed to them too.
- *
- * Why this file exists: the first email layer kept contacts in a JSON file,
- * which cannot be written on Vercel (read-only file system, and every request
- * may run on a different server), so adding a contact failed in production.
- * Emails now live on the same contact records as Telegram, in the configured
- * store (Supabase in production). Device-token protected, like every other
- * contacts route, so strangers cannot sign addresses up to the topic.
+ * PUT /api/contacts/[id]/email: stores a contact's email address and
+ * subscribes it to the SNS topic. A failed subscription keeps the address with
+ * status "failed" so it can be retried. Requires the household code.
  */
 import { z } from "zod"
 

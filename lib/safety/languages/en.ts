@@ -1,9 +1,6 @@
 /*
- * en.ts: the English language pack.
- *
- * Why this file exists: everything the assistant listens for and says in
- * English, in one place (see pack.ts for what each part means). Contractions
- * are fine in phrases: "I'm" and "I am" are matched the same way.
+ * English language pack. Contractions are expanded before matching, so
+ * "I'm" and "I am" are equivalent in phrases.
  */
 import { EMERGENCY_NUMBERS } from "../region"
 import type { LanguagePack } from "./pack"

@@ -1,11 +1,7 @@
 /*
- * check-incident.ts: sends a trigger's audio snippet to /api/incidents/check
- * and returns the validated answer.
- *
- * Why this file exists: the browser cannot hold API keys, so transcription and
- * classification run on the server. Any failure (no token, offline, slow,
- * unexpected answer) is returned as null, and the monitor then asks the
- * person anyway: a failed check never blocks a safety question.
+ * Sends a trigger's snippet to /api/incidents/check and validates the answer.
+ * Any failure returns null, and the monitor asks the question anyway: a failed
+ * check never blocks a safety question.
  */
 import { encodeWav } from "@/lib/audio/wav"
 import {

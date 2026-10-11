@@ -1,11 +1,6 @@
 /*
- * alert-message.ts: the text of every message sent to contacts, in English
- * and Arabic.
- *
- * Why this file exists: alerts are what family members actually read under
- * stress. Keeping the wording in one place of small pure functions makes it
- * easy to review, test and translate. No message ever diagnoses anything: it
- * says what was heard and what to do.
+ * The text of every message sent to contacts, in English and Arabic. Messages
+ * describe what was heard and what to do; they never suggest a diagnosis.
  */
 import { getIncident } from "@/lib/safety/incidents"
 import { EMERGENCY_NUMBERS } from "@/lib/safety/region"

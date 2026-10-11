@@ -1,15 +1,10 @@
 /*
- * POST /api/incidents/check: transcribes a trigger's audio snippet and asks the
- * classifier whether it looks like a real incident.
+ * POST /api/incidents/check: transcribes a trigger's snippet and classifies
+ * it. Nothing is stored; the snippet is used for this request only.
  *
- * Why this file exists: API keys must stay on the server, so the monitor page
- * cannot call speech-to-text or the language model itself. This route only
- * checks: it stores nothing. The snippet is used for this request and dropped.
- *
- * Request (multipart, "Authorization: Bearer <MONITOR_DEVICE_TOKEN>"):
- *   audio: WAV snippet, trigger: TriggerMatch as JSON, language: "en" | "ar",
- *   optional dismissAt: how sure the model must be to skip the question
- *   (the household's setting, clamped to a safe range)
+ * Request (multipart, household code): audio (WAV), trigger (TriggerMatch
+ * JSON), language, optional dismissAt (how confident the model must be to skip
+ * the question; clamped server-side).
  * Response: { transcript, classification, isIncident }
  */
 import { isIncident, safeDismissThreshold } from "@/lib/safety/ai-check"

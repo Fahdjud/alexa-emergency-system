@@ -1,14 +1,10 @@
 /*
- * POST /api/incidents: records an incident when the monitor starts asking
- * "Are you okay?", together with its audio snippet.
+ * POST /api/incidents: records an incident, with its snippet, as soon as the
+ * monitor asks "Are you okay?". If the tab then closes or the device loses
+ * power, the server's own deadline still escalates.
  *
- * Why this file exists: escalation has to survive the browser tab. Recording
- * the incident on the server as soon as the question is asked means that if
- * the tab crashes or the device loses power, the server's own deadline
- * (the person's time left plus a grace period) still escalates.
- *
- * Request (multipart, device token): trigger (JSON), language, secondsLeft,
- * optional audio (WAV), transcript, classification (JSON from the AI check).
+ * Request (multipart, household code): trigger (JSON), language, secondsLeft,
+ * optional audio (WAV), transcript and classification (JSON).
  * Response: { id }
  */
 import { z } from "zod"

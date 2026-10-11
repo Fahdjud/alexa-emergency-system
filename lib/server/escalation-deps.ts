@@ -1,9 +1,6 @@
 /*
- * escalation-deps.ts: builds the real dependencies for the escalation runner
- * (configured store, notifier, clock, secrets) for API routes.
- *
- * Why this file exists: the runner takes its dependencies as an argument so
- * tests can pass fakes. Routes call this instead of repeating the wiring.
+ * Builds the production dependencies for the escalation runner (store,
+ * notifier, clock, secrets, email). Tests pass their own.
  */
 import "server-only"
 

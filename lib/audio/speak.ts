@@ -1,11 +1,11 @@
 /*
- * speak.ts: says a sentence aloud with the browser's built-in speech
- * synthesis, in English or Arabic.
- *
- * Why this file exists: the demo app only shows text. The safety assistant
- * must ask "Are you okay?" out loud, because the person may be on the floor
- * and unable to see the screen. Speech synthesis is free and on-device.
+ * Speaks a sentence with the browser's speech synthesis. The question has to
+ * be heard, not read: the person may be on the floor and unable to see the
+ * screen. The best available voice for the language is chosen, preferring
+ * natural/neural voices (for example Microsoft Edge's online voices).
  */
+
+import { bestVoice } from "./voice-choice"
 
 const MAX_WAIT_BASE_MS = 2000
 const MAX_WAIT_PER_CHARACTER_MS = 120
@@ -16,8 +16,7 @@ export function speak(text: string, languageTag: string): Promise<void> {
     return Promise.resolve()
 
   return new Promise((resolve) => {
-    // Chrome sometimes never fires "end". Never wait longer than the sentence could take,
-    // or recognition would stay paused and the answer would not be heard.
+    // Chrome sometimes never fires "end"; recognition must not stay paused.
     const fallback = setTimeout(
       resolve,
       MAX_WAIT_BASE_MS + text.length * MAX_WAIT_PER_CHARACTER_MS
@@ -28,12 +27,12 @@ export function speak(text: string, languageTag: string): Promise<void> {
     }
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = languageTag
-    utterance.rate = 0.9 // a little slower: easier to follow when stressed
+    utterance.rate = 0.9 // slightly slower is easier to follow under stress
     const voice = pickVoice(languageTag)
     if (voice) utterance.voice = voice
     utterance.onend = done
     utterance.onerror = done
-    window.speechSynthesis.cancel() // never queue behind an older sentence
+    window.speechSynthesis.cancel() // never queue behind an earlier sentence
     window.speechSynthesis.speak(utterance)
   })
 }
@@ -44,10 +43,17 @@ export function stopSpeaking(): void {
 }
 
 function pickVoice(languageTag: string): SpeechSynthesisVoice | undefined {
-  const voices = window.speechSynthesis.getVoices()
-  const language = languageTag.split("-")[0]
-  return (
-    voices.find((voice) => voice.lang === languageTag) ??
-    voices.find((voice) => voice.lang.startsWith(language))
-  )
+  return bestVoice(window.speechSynthesis.getVoices(), languageTag)
 }
+
+/** The voice that will be used for this language, for the troubleshooting panel. */
+export function voiceName(languageTag: string): string | null {
+  if (typeof window === "undefined" || !("speechSynthesis" in window))
+    return null
+  return pickVoice(languageTag)?.name ?? null
+}
+
+// Some browsers load the voice list asynchronously; asking early makes it
+// ready before the first question.
+if (typeof window !== "undefined" && "speechSynthesis" in window)
+  window.speechSynthesis.getVoices()

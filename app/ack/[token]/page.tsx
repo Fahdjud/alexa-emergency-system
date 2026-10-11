@@ -1,12 +1,9 @@
 /*
- * /ack/[token]: the page a contact opens from an alert. It shows what happened
- * and lets them answer: on my way, calling now, or handling it. A link from
- * an email (one per incident, sent to every contact) first asks who is
- * answering.
- *
- * Why this file exists: contacts need one tap to stop the escalation and let
- * the others know. Opening the page changes nothing (link previews open it
- * too); only the button does, via POST /api/ack.
+ * /ack/[token]: the page a contact opens from an alert, showing what happened
+ * and the three answers (on my way, calling now, handling it). Email links
+ * are shared by all contacts, so they first ask who is answering. Opening the
+ * page changes nothing; only submitting the form does, because chat apps and
+ * mail clients open links to build previews.
  */
 import type { Metadata } from "next"
 

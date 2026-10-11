@@ -1,9 +1,6 @@
 /*
- * level.ts: turns a chunk of audio into a 0-1 loudness value for the level meter.
- *
- * Why this file exists: the monitor page shows that the microphone is really
- * hearing the room. Without a meter, a muted or unplugged mic looks the same
- * as a quiet room.
+ * RMS loudness of an audio chunk on a 0-1 scale, for the level meter and the
+ * impact detector.
  */
 
 /** Root-mean-square loudness, scaled so normal speech sits around the middle of the meter. */

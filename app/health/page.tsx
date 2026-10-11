@@ -1,12 +1,9 @@
 "use client"
 
 /*
- * /health: a setup page that shows which environment variables this deployment
- * can read, as ✅ / ⚠️ / ❌, without showing any values.
- *
- * Why this file exists: /api/health/config needs an Authorization header, which
- * a browser address bar cannot send. This page asks for the device token,
- * calls the API with it, and shows the result. The token is not saved.
+ * /health: shows which environment variables this deployment can read, and
+ * whether each is well formed, without revealing any value. The API needs an
+ * Authorization header, so this page asks for the household code and calls it.
  */
 import { useState, type FormEvent } from "react"
 
@@ -109,7 +106,7 @@ function ReportView({ report }: { report: EnvReport }) {
           <tr>
             <th className="py-1 font-normal">Variable</th>
             <th className="py-1 font-normal">Group</th>
-            <th className="py-1 font-normal">Needed from</th>
+            <th className="py-1 font-normal">Needed for</th>
           </tr>
         </thead>
         <tbody>
@@ -131,7 +128,7 @@ function ReportView({ report }: { report: EnvReport }) {
                 )}
               </td>
               <td className="py-2 pr-3 text-[#b3c0ce]">{variable.group}</td>
-              <td className="py-2 text-[#b3c0ce]">{variable.neededFrom}</td>
+              <td className="py-2 text-[#b3c0ce]">{variable.neededFor}</td>
             </tr>
           ))}
         </tbody>

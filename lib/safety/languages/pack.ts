@@ -1,13 +1,8 @@
 /*
- * pack.ts: the shape of a language pack, the one file that teaches the
- * assistant a language.
- *
- * Why this file exists: every word the assistant listens for or says in a
- * language lives in that language's pack, so adding a language is one new
- * file plus one line in languages/index.ts. Nothing else in the app names a
- * language. Speech recognition (Chrome), transcription (Whisper) and the AI
- * check (Claude) already work in many languages; what a new language needs is
- * the phrases below, written by a native speaker.
+ * The shape of a language pack: every phrase the assistant listens for and
+ * every line it speaks in one language. Recognition (Chrome), transcription
+ * (Whisper) and classification (Claude) are already multilingual, so a new
+ * language only needs these phrases, written by a native speaker.
  */
 import type { IncidentTypeId, ReplyIntent } from "../types"
 

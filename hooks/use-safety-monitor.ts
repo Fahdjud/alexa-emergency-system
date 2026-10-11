@@ -1,26 +1,18 @@
 /*
- * use-safety-monitor.ts: the monitor's brain on the client. It connects the
- * microphone, the sound classifier, speech recognition and the voice
- * confirmation to the state machine in lib/safety/monitor-machine.ts.
+ * Connects capture, sound classification, speech recognition and the spoken
+ * confirmation to the state machine in lib/safety/monitor-machine.ts. The
+ * screen components only render state and call actions.
  *
- * Why this file exists: each piece (capture, classifier, speech, matching,
- * reply parsing, state machine) is small and separate. This hook is the one
- * place that wires them together, so the screen only renders state and calls
- * actions.
+ * Flow: trigger -> AI check (speech triggers only; a confident "not an
+ * incident" is logged and dropped, any failure falls through) -> spoken
+ * question, with recognition paused so the device never hears itself ->
+ * answer by voice or button -> "fine" cancels; "help" or 30 s of silence
+ * escalates.
  *
- * Flow: trigger -> (speech triggers only) transcribe + classify the snippet
- * on the server; a confident "not an incident" is logged and dropped, and any
- * failure falls through -> say the question (recognition paused so we never
- * hear ourselves) -> listen for the answer or a button press -> "fine"
- * cancels, "help" or 30 s of silence escalates.
- *
- * The server is told about the incident as soon as the question is asked, and
- * gets the answer when it comes, so it can escalate by itself if this tab
- * dies mid-question. After escalating, the monitor goes back to listening on
- * its own (escalation runs on the server) and keeps showing who is handling it.
- *
- * Nothing is dropped silently: a trigger that is ignored (busy, or the same
- * alert paused after "I'm fine") still appears in the detections with why.
+ * The server learns about the incident when the question is asked, so it can
+ * escalate on its own if the tab dies. After escalating, the monitor resumes
+ * listening and reports who is responding. Ignored triggers are still shown
+ * in the activity list with the reason.
  */
 import {
   useCallback,

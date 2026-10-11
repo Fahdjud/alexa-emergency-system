@@ -1,10 +1,8 @@
 /*
- * ring-buffer.ts: a fixed-size buffer that always holds the most recent audio
- * samples, overwriting the oldest.
- *
- * Why this file exists: we must be able to send the seconds *before* a trigger
- * without ever storing continuous audio. A ring buffer keeps memory constant
- * (15 s at 16 kHz is about 1 MB) and forgets everything older automatically.
+ * Fixed-size buffer holding the most recent audio samples. It lets a snippet
+ * include the seconds before a trigger without ever keeping continuous audio:
+ * memory stays constant (about 1 MB for 15 s at 16 kHz) and older audio is
+ * overwritten.
  */
 
 export class RingBuffer {

@@ -1,10 +1,7 @@
 /*
- * ack-token.ts: signs and checks the "I'm handling it" links sent to contacts.
- *
- * Why this file exists: an acknowledge link stops escalation, so it must not
- * be guessable or forgeable, and it must say which contact acknowledged. A
- * token is "incidentId.contactId.expiry" plus an HMAC-SHA256 signature made
- * with ACK_TOKEN_SECRET. It needs no database lookup to check.
+ * Signed answer links for contacts. A token is "incidentId.contactId.expiry"
+ * with an HMAC-SHA256 signature (ACK_TOKEN_SECRET), so it cannot be guessed or
+ * forged and needs no database lookup to verify.
  */
 import "server-only"
 

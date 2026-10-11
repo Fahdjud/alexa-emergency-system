@@ -1,11 +1,7 @@
 /*
- * use-sound-triggers.ts: React hook that runs the sound classifier on the
- * live microphone audio about once a second and reports incident triggers.
- *
- * Why this file exists: the classifier (lib/audio/sound-classifier.ts) and
- * the matching rules (lib/safety/match-trigger.ts) are plain functions. This
- * hook connects them to the microphone stream from useAudioCapture and keeps
- * the short score history that "sustained" sounds (prolonged crying) need.
+ * Runs the sound classifier on live audio about once a second, keeps the
+ * short score history needed for sustained sounds, and reports matching
+ * triggers. Optionally runs the impact detector for falls.
  */
 import { useEffect, useRef, useState } from "react"
 

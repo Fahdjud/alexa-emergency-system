@@ -1,11 +1,7 @@
 /*
- * incident-classifier.ts: the IncidentClassifier interface and the factory
- * that picks the configured provider (CLASSIFIER_PROVIDER).
- *
- * Why this file exists: the app had no classification. The language model
- * filters out false alarms (TV, jokes, past events) and extracts a quote for
- * the alert. If it fails or times out, the free rules classifier answers
- * instead, so an AI outage can never block a safety check.
+ * IncidentClassifier interface and provider selection (CLASSIFIER_PROVIDER).
+ * If the language model fails or times out, the rules classifier answers
+ * instead, so an outage cannot block a safety check.
  */
 import "server-only"
 

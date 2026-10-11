@@ -1,12 +1,7 @@
 /*
- * instrumentation.ts: runs once when the Next.js server starts. Outside
- * Vercel it calls the escalation tick every 15 s, so alerts keep going when
- * you run the app locally.
- *
- * Why this file exists: escalation is driven by a scheduler calling
- * /api/escalation/tick. In production that is Supabase pg_cron; locally there
- * is no scheduler, and nothing else in the app runs on a timer. It calls the
- * real HTTP route with CRON_SECRET, so the local path matches production.
+ * Development scheduler: outside Vercel, calls /api/escalation/tick every 15 s
+ * through the real HTTP route, matching what Supabase pg_cron does in
+ * production.
  */
 const LOCAL_TICK_MS = 15_000
 

@@ -1,11 +1,6 @@
 /*
- * monitor-settings.ts: the monitor's settings remembered in this browser:
- * language, device token, and the setup answers (what to watch for and how
- * careful the AI should be).
- *
- * Why this file exists: the setup screen writes these and the monitor reads
- * them; keeping both sides on the same stores means one source of truth. They
- * live only in this browser, which is enough for one monitor per household.
+ * Settings stored in this browser: language, household code and the setup
+ * answers. The setup screen and the monitor share these stores.
  */
 import {
   DEFAULT_PROFILE,
