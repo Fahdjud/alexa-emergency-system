@@ -1,4 +1,5 @@
-import { X } from "lucide-react"
+import Link from "next/link"
+import { Activity, ShieldCheck, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { devices } from "./data"
@@ -34,6 +35,45 @@ function DeviceList() {
   )
 }
 
+function HomeSafetyLinks() {
+  return (
+    <nav className="mt-5 grid gap-2" aria-label="Home safety tools">
+      <Link
+        className="grid gap-2 rounded-xl border border-[#263d54] bg-[#101e2d] p-3 text-left no-underline transition-colors hover:border-[#287b95] hover:bg-[#14283b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00c8f4]"
+        href="/monitor"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-[#e8eef5]">
+          <ShieldCheck className="text-[#54cfe8]" size={17} />
+          Set up home safety monitoring
+        </span>
+        <span className="text-xs leading-relaxed text-[#9baabc]">
+          Configure listening, choose what to watch for, and test alerts to
+          trusted contacts.
+        </span>
+        <span className="text-xs font-medium text-[#63d6df]">
+          Open safety monitor
+        </span>
+      </Link>
+      <Link
+        className="grid gap-2 rounded-xl border border-[#263d54] bg-[#101e2d] p-3 text-left no-underline transition-colors hover:border-[#287b95] hover:bg-[#14283b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00c8f4]"
+        href="/health"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-[#e8eef5]">
+          <Activity className="text-[#54cfe8]" size={17} />
+          Check deployment configuration
+        </span>
+        <span className="text-xs leading-relaxed text-[#9baabc]">
+          Verify required settings are present and correctly shaped; secret
+          values are never shown.
+        </span>
+        <span className="text-xs font-medium text-[#63d6df]">
+          Run configuration check
+        </span>
+      </Link>
+    </nav>
+  )
+}
+
 export function DevicesPanel({ open, onClose }: DevicesPanelProps) {
   return (
     <>
@@ -42,6 +82,7 @@ export function DevicesPanel({ open, onClose }: DevicesPanelProps) {
           <h2 className="m-0 text-[23px] font-normal text-[#f0f4f8]">Devices</h2>
         </div>
         <DeviceList />
+        <HomeSafetyLinks />
       </aside>
 
       {open && (
@@ -71,6 +112,7 @@ export function DevicesPanel({ open, onClose }: DevicesPanelProps) {
               </Button>
             </div>
             <DeviceList />
+            <HomeSafetyLinks />
           </section>
         </div>
       )}

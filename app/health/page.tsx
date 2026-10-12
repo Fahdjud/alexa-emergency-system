@@ -6,6 +6,7 @@
  * Authorization header, so this page asks for the household code and calls it.
  */
 import { useState, type FormEvent } from "react"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import type { CheckStatus, EnvReport } from "@/lib/server/env-checks"
@@ -45,7 +46,15 @@ export default function HealthPage() {
   return (
     <main className="min-h-dvh bg-[#0b1421] px-4 py-10 text-[#f3f6fa]">
       <div className="mx-auto max-w-2xl">
-        <h1 className="m-0 text-2xl font-normal">Configuration check</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="m-0 text-2xl font-normal">Configuration check</h1>
+          <Link
+            className="inline-flex h-9 items-center rounded-md border border-[#263d54] px-3 text-sm text-[#d4e0ec] no-underline transition-colors hover:border-[#287b95] hover:bg-[#14283b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00c8f4]"
+            href="/"
+          >
+            Return to home
+          </Link>
+        </div>
         <p className="mt-2 text-sm text-[#a7adb2]">
           Shows whether each variable is set and correctly shaped on this
           deployment. Values are never shown.
