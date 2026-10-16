@@ -13,22 +13,15 @@ const { GET } = await import("./route")
 const { forgetConfirmedEmails } = await import("@/lib/server/email-alert")
 const { getStore } = await import("@/lib/server/providers/store")
 
-const TOKEN = "c".repeat(64)
-
 async function list(): Promise<
   { name: string; connected: boolean; emailStatus: string | null }[]
 > {
-  const response = await GET(
-    new Request("http://localhost/api/contacts", {
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    })
-  )
+  const response = await GET()
   return (await response.json()).contacts
 }
 
 describe("GET /api/contacts", () => {
   beforeEach(() => {
-    vi.stubEnv("MONITOR_DEVICE_TOKEN", TOKEN)
     vi.stubEnv("AWS_SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:t")
     forgetConfirmedEmails()
     confirmed.mockReset()

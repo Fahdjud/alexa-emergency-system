@@ -43,16 +43,14 @@ export function MonitorScreen() {
   /** Set by "Start and run a test" at the end of setup. */
   const [testAfterSetup, setTestAfterSetup] = useState(false)
 
-  if (!monitor.deviceToken || !monitor.profile || settingsOpen) {
+  if (!monitor.profile || settingsOpen) {
     return (
       <SetupWizard
-        deviceToken={monitor.deviceToken}
         language={monitor.language}
         profile={monitor.profile ?? DEFAULT_PROFILE}
-        canClose={Boolean(monitor.deviceToken && monitor.profile)}
+        canClose={Boolean(monitor.profile)}
         onClose={() => setSettingsOpen(false)}
-        onSave={({ deviceToken, language, profile, runTest }) => {
-          monitor.setDeviceToken(deviceToken)
+        onSave={({ language, profile, runTest }) => {
           monitor.setLanguage(language)
           monitor.saveProfile(profile)
           setSettingsOpen(false)
@@ -93,7 +91,7 @@ function MainScreen({
   }, [testAfterSetup, onTestStarted, runTest])
   const listening = audio.status === "on"
   const [showDetails, setShowDetails] = useState(false)
-  const connectedContacts = useConnectedContacts(monitor.deviceToken)
+  const connectedContacts = useConnectedContacts()
 
   return (
     <main className="min-h-dvh bg-[#0b1421] px-4 py-6 text-[#f3f6fa]">
@@ -431,12 +429,12 @@ function LanguageSwitch({
 }
 
 /** How many contacts can be alerted right now; refreshed every minute. */
-function useConnectedContacts(deviceToken: string): number | null {
+function useConnectedContacts(): number | null {
   const [count, setCount] = useState<number | null>(null)
   useEffect(() => {
     let cancelled = false
     const load = () =>
-      void listContacts(deviceToken).then((list) => {
+      void listContacts().then((list) => {
         if (!cancelled && list)
           setCount(list.filter((contact) => contact.connected).length)
       })
@@ -446,7 +444,7 @@ function useConnectedContacts(deviceToken: string): number | null {
       cancelled = true
       clearInterval(timer)
     }
-  }, [deviceToken])
+  }, [])
   return count
 }
 

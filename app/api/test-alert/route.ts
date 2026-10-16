@@ -1,13 +1,11 @@
 /*
  * POST /api/test-alert: sends the practice alert for "Test the system"
  * ({ language }) and returns its id and who it reached. Refused while a real
- * alert is open and at most once every 30 seconds. Requires the household
- * code.
+ * alert is open and at most once every 30 seconds.
  */
 import { z } from "zod"
 
 import { LanguageSchema } from "@/lib/safety/schemas"
-import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { emailAlertsConfigured, emailEveryone } from "@/lib/server/email-alert"
 import { escalationDeps } from "@/lib/server/escalation-deps"
 import { sendTestAlert } from "@/lib/server/test-alert"
@@ -15,8 +13,6 @@ import { sendTestAlert } from "@/lib/server/test-alert"
 const BodySchema = z.object({ language: LanguageSchema })
 
 export async function POST(request: Request) {
-  const rejection = rejectUnlessDevice(request)
-  if (rejection) return rejection
   const body = BodySchema.safeParse(await request.json().catch(() => null))
   if (!body.success)
     return Response.json({ error: "Expected { language }." }, { status: 400 })

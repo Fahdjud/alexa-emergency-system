@@ -4,7 +4,7 @@
  * expired data. Called every 30 s by Supabase pg_cron (instrumentation.ts in
  * development). Idempotent. Requires "Authorization: Bearer <CRON_SECRET>".
  */
-import { bearerToken, secretsMatch } from "@/lib/server/device-token"
+import { bearerToken, secretsMatch } from "@/lib/server/secrets"
 import { requireEnv } from "@/lib/server/env"
 import { escalationDeps } from "@/lib/server/escalation-deps"
 import { runEscalationTick } from "@/lib/server/escalation-runner"

@@ -36,6 +36,7 @@ Built for households in Saudi Arabia, in English and Saudi Arabic.
   idempotent escalation steps, and fallbacks at every external call.
 - **Privacy**: no continuous recording. Only a short snippet around a trigger
   leaves the device; snippets are deleted after 7 or 30 days, records after 90.
+  Contact email addresses are shown masked (`r****@gmail.com`).
 
 ## How it works
 
@@ -89,16 +90,16 @@ provides neural voices; the monitor picks the best voice available.
 All variables are listed and described in [`.env.example`](.env.example).
 They are server-only and grouped by feature:
 
-| Feature                 | Variables                                                                                             |
-| ----------------------- | ----------------------------------------------------------------------------------------------------- |
-| AI check                | `GROQ_API_KEY`, `ANTHROPIC_API_KEY`                                                                   |
-| Telegram alerts         | `NOTIFIER_PROVIDER=telegram`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `APP_BASE_URL`           |
-| Email alerts (optional) | `AWS_REGION`, `AWS_SNS_TOPIC_ARN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`                       |
-| Database                | `STORE_PROVIDER=supabase`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`                                |
-| Secrets                 | `MONITOR_DEVICE_TOKEN` (household code), `ACK_TOKEN_SECRET`, `CRON_SECRET`, `TELEGRAM_WEBHOOK_SECRET` |
+| Feature                 | Variables                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| AI check                | `GROQ_API_KEY`, `ANTHROPIC_API_KEY`                                                         |
+| Telegram alerts         | `NOTIFIER_PROVIDER=telegram`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `APP_BASE_URL` |
+| Email alerts (optional) | `AWS_REGION`, `AWS_SNS_TOPIC_ARN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`             |
+| Database                | `STORE_PROVIDER=supabase`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`                      |
+| Secrets                 | `ACK_TOKEN_SECRET`, `CRON_SECRET`, `TELEGRAM_WEBHOOK_SECRET`                                |
 
-After deploying, open `/health` and enter the household code to confirm every
-variable is present and well formed.
+After deploying, open `/health` to confirm every variable is present and well
+formed.
 
 ## Deployment
 
@@ -137,7 +138,7 @@ flagged, and replies understood.
 | `lib/safety/languages/`             | One file per language: phrases, questions, spoken lines and test sentences            |
 | `lib/audio/`                        | Microphone, ring buffer, WAV, YAMNet, impact detector, speech in and out              |
 | `lib/server/`                       | Escalation runner, alert texts, signed links, configuration checks, providers         |
-| `app/api/`                          | API routes (each authenticated by household code, cron secret or Telegram secret)     |
+| `app/api/`                          | API routes (scheduler and Telegram routes check their secrets)                        |
 | `db/`                               | Supabase schema and scheduler                                                         |
 | `components/alexa/`, `lib/aws/`     | The Alexa-style demo and the SNS email layer                                          |
 
@@ -157,6 +158,9 @@ flagged, and replies understood.
 - There is no automatic call to emergency services: the device and messages
   direct people to call 911 (997 ambulance, 998 civil defence).
 - One household per deployment.
+- The monitor has no sign-in: anyone with the link can open it. Contact
+  details are masked, and a Telegram invite link stops being shown, and stops
+  working for anyone else, once the contact joins.
 
 ## UI components
 

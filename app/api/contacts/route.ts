@@ -1,13 +1,12 @@
 /*
  * GET /api/contacts: contacts in alert order, with invite links, email status
  * and whether email alerts are configured. POST /api/contacts: adds a contact
- * ({ name, priority }). Requires the household code; chat IDs are never
- * returned.
+ * ({ name, priority }). Chat IDs are never returned and
+ * email addresses are masked.
  */
 import { z } from "zod"
 
 import { publicView } from "@/lib/server/contact-view"
-import { rejectUnlessDevice } from "@/lib/server/device-token"
 import {
   confirmedEmails,
   emailAlertsConfigured,
@@ -19,9 +18,7 @@ const NewContactSchema = z.object({
   priority: z.number().int().min(1).max(20),
 })
 
-export async function GET(request: Request) {
-  const rejection = rejectUnlessDevice(request)
-  if (rejection) return rejection
+export async function GET() {
   const contacts = await (await getStore()).listContacts()
   const confirmed = contacts.some((contact) => contact.email)
     ? await confirmedEmails()
@@ -36,8 +33,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const rejection = rejectUnlessDevice(request)
-  if (rejection) return rejection
   const body = NewContactSchema.safeParse(
     await request.json().catch(() => null)
   )

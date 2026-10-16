@@ -43,7 +43,6 @@ import {
 } from "@/lib/client/safety-api"
 import {
   DEFAULT_PROFILE,
-  deviceTokenStore,
   languageStore,
   parseProfile,
   profileStore,
@@ -132,11 +131,6 @@ export function useSafetyMonitor() {
     languageStore.subscribe,
     languageStore.read,
     languageStore.readOnServer
-  )
-  const deviceToken = useSyncExternalStore(
-    deviceTokenStore.subscribe,
-    deviceTokenStore.read,
-    deviceTokenStore.readOnServer
   )
   const profileJson = useSyncExternalStore(
     profileStore.subscribe,
@@ -239,12 +233,9 @@ export function useSafetyMonitor() {
           )
         )
 
-      const token = deviceTokenStore.read()
       const dismissAt = dismissThreshold(carefulnessRef.current)
       const runAiCheck =
-        dismissAt !== null &&
-        needsAiCheck(match, incidentsRef.current) &&
-        token !== ""
+        dismissAt !== null && needsAiCheck(match, incidentsRef.current)
       dispatch({ type: "trigger", match, needsAiCheck: runAiCheck, nowMs })
       if (!runAiCheck) return
 
@@ -256,7 +247,6 @@ export function useSafetyMonitor() {
               trigger: match,
               language: languageRef.current,
               dismissAt: dismissAt ?? 1,
-              deviceToken: token,
             })
           : null
         // Only answer for this trigger: a more severe one may have taken over meanwhile.
@@ -434,24 +424,20 @@ export function useSafetyMonitor() {
     state.phase === "confirming" ? state.incident.startedAtMs : null
   useEffect(() => {
     const current = stateRef.current
-    const token = deviceTokenStore.read()
-    if (current.phase !== "confirming" || !token) return
+    if (current.phase !== "confirming") return
     const { incident, deadlineMs } = current
     const checked = checkedSnippets.current.get(incident.startedAtMs)
     checkedSnippets.current.delete(incident.startedAtMs)
     const reported = (async () => {
       const snippet = checked?.snippet ?? (await captureSnippet())
-      return reportIncident(
-        {
-          trigger: incident.trigger,
-          language: languageRef.current,
-          secondsLeft: (deadlineMs - Date.now()) / 1000,
-          snippet,
-          transcript: checked?.transcript ?? null,
-          classification: checked?.classification ?? null,
-        },
-        token
-      )
+      return reportIncident({
+        trigger: incident.trigger,
+        language: languageRef.current,
+        secondsLeft: (deadlineMs - Date.now()) / 1000,
+        snippet,
+        transcript: checked?.transcript ?? null,
+        classification: checked?.classification ?? null,
+      })
     })()
     unansweredOnServer.current.set(incident.startedAtMs, reported)
   }, [reportKey, captureSnippet])
@@ -459,12 +445,7 @@ export function useSafetyMonitor() {
   // Send the outcome to the server. It also settles any incident a more severe one took over from.
   useEffect(() => {
     const current = stateRef.current
-    const token = deviceTokenStore.read()
-    if (
-      (current.phase !== "cancelled" && current.phase !== "escalated") ||
-      !token
-    )
-      return
+    if (current.phase !== "cancelled" && current.phase !== "escalated") return
     const answer =
       current.phase === "cancelled"
         ? "fine"
@@ -476,7 +457,7 @@ export function useSafetyMonitor() {
     )
     for (const reported of unansweredOnServer.current.values()) {
       void reported.then((id) => {
-        if (id) void sendAnswer(id, answer, token)
+        if (id) void sendAnswer(id, answer)
       })
     }
     unansweredOnServer.current.clear()
@@ -490,10 +471,9 @@ export function useSafetyMonitor() {
   const escalatedServerId = activeAlert?.serverId ?? null
   useEffect(() => {
     if (!escalatedServerId) return
-    const token = deviceTokenStore.read()
     let lastSpoken = ""
     const poll = async () => {
-      const status = await getIncidentStatus(escalatedServerId, token)
+      const status = await getIncidentStatus(escalatedServerId)
       if (!status) return
       setServerStatus(status)
       const lines = languagePack(languageRef.current).lines
@@ -521,18 +501,17 @@ export function useSafetyMonitor() {
   // Heartbeat: the server tells contact 1 if these stop (tab closed, device off).
   // Stopping on purpose sends one "not listening" beat, so a deliberate pause does not alert anyone.
   useEffect(() => {
-    if (!deviceToken) return
     if (!listening) {
-      void sendHeartbeat(false, deviceToken)
+      void sendHeartbeat(false)
       return
     }
-    void sendHeartbeat(true, deviceToken)
+    void sendHeartbeat(true)
     const timer = setInterval(
-      () => void sendHeartbeat(true, deviceToken),
+      () => void sendHeartbeat(true),
       HEARTBEAT_EVERY_MS
     )
     return () => clearInterval(timer)
-  }, [listening, deviceToken])
+  }, [listening])
 
   /** Hides the alert card. Escalation itself continues on the server until someone acknowledges. */
   const dismissAlert = useCallback(() => {
@@ -660,8 +639,7 @@ export function useSafetyMonitor() {
 
         if (!withContacts || !alive()) return
         update("contacts", "running", "Sending a TEST alert to your contacts…")
-        const token = deviceTokenStore.read()
-        const sent = await sendTestAlert(language, token)
+        const sent = await sendTestAlert(language)
         if (!alive()) return
         if ("error" in sent) return update("contacts", "failed", sent.error)
         const reached = [...sent.sentTo, ...(sent.emailed ? ["email"] : [])]
@@ -679,7 +657,7 @@ export function useSafetyMonitor() {
         const deadline = Date.now() + TEST_CONTACT_MS
         while (alive() && Date.now() < deadline) {
           await sleep(TEST_POLL_MS)
-          const status = await getIncidentStatus(sent.id, token)
+          const status = await getIncidentStatus(sent.id)
           if (!alive() || status?.status !== "acknowledged") continue
           const name = status.acknowledgedBy ?? "A contact"
           const response = status.response ?? "handling"
@@ -738,8 +716,6 @@ export function useSafetyMonitor() {
     state,
     language,
     setLanguage: languageStore.write,
-    deviceToken,
-    setDeviceToken: deviceTokenStore.write,
     profile,
     saveProfile,
     serverStatus,

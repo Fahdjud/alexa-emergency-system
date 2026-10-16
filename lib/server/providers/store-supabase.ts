@@ -100,6 +100,8 @@ export function createSupabaseStore(db: SupabaseClient): IncidentStore {
         .from("contacts")
         .update({ telegram_chat_id: chatId })
         .eq("invite_code", inviteCode)
+        // An invite works once: a contact already linked to another chat is kept.
+        .or(`telegram_chat_id.is.null,telegram_chat_id.eq.${chatId}`)
         .select()
         .maybeSingle()
       check("link Telegram chat", error)

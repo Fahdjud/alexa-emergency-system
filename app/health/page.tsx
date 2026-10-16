@@ -2,10 +2,9 @@
 
 /*
  * /health: shows which environment variables this deployment can read, and
- * whether each is well formed, without revealing any value. The API needs an
- * Authorization header, so this page asks for the household code and calls it.
+ * whether each is well formed, without revealing any value.
  */
-import { useState, type FormEvent } from "react"
+import { useState } from "react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -19,20 +18,16 @@ const statusIcon: Record<CheckStatus, string> = {
 }
 
 export default function HealthPage() {
-  const [token, setToken] = useState("")
   const [report, setReport] = useState<EnvReport | null>(null)
   const [error, setError] = useState("")
   const [checking, setChecking] = useState(false)
 
-  async function runCheck(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function runCheck() {
     setChecking(true)
     setError("")
     setReport(null)
     try {
-      const response = await fetch("/api/health/config", {
-        headers: { Authorization: `Bearer ${token.trim()}` },
-      })
+      const response = await fetch("/api/health/config")
       const body = await response.json()
       if (response.ok) setReport(body)
       else setError(body.error ?? `Request failed (${response.status}).`)
@@ -60,24 +55,14 @@ export default function HealthPage() {
           deployment. Values are never shown.
         </p>
 
-        <form className="mt-6 flex gap-2" onSubmit={runCheck}>
-          <input
-            className="h-9 flex-1 rounded-md border border-[#263d54] bg-[#0e1b2a] px-3 text-sm outline-none focus:border-[#168aa4]"
-            type="password"
-            autoComplete="off"
-            aria-label="Monitor device token"
-            placeholder="MONITOR_DEVICE_TOKEN"
-            value={token}
-            onChange={(event) => setToken(event.target.value)}
-          />
-          <Button
-            className="bg-[#00c8f4] text-[#06131c] hover:bg-[#59ddf5]"
-            type="submit"
-            disabled={!token.trim() || checking}
-          >
-            {checking ? "Checking..." : "Check"}
-          </Button>
-        </form>
+        <Button
+          className="mt-6 bg-[#00c8f4] text-[#06131c] hover:bg-[#59ddf5]"
+          type="button"
+          onClick={runCheck}
+          disabled={checking}
+        >
+          {checking ? "Checking..." : "Check configuration"}
+        </Button>
 
         {error && (
           <p className="mt-4 text-sm text-[#e2b78e]" role="alert">

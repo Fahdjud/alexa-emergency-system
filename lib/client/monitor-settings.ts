@@ -1,6 +1,5 @@
 /*
- * Settings stored in this browser: language, household code and the setup
- * answers. The setup screen and the monitor share these stores.
+ * Settings stored in this browser: language and the setup answers. The setup screen and the monitor share these stores.
  */
 import {
   DEFAULT_PROFILE,
@@ -15,12 +14,6 @@ export const languageStore = createStoredValue<Language>(
   "safety-monitor-language",
   "en",
   isLanguage
-)
-
-export const deviceTokenStore = createStoredValue<string>(
-  "safety-monitor-device-token",
-  "",
-  (value): value is string => value.length > 0
 )
 
 /** The setup answers as JSON; empty until setup is finished. */

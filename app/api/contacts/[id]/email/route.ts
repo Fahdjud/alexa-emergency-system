@@ -1,11 +1,10 @@
 /*
  * PUT /api/contacts/[id]/email: stores a contact's email address and
  * subscribes it to the SNS topic. A failed subscription keeps the address with
- * status "failed" so it can be retried. Requires the household code.
+ * status "failed" so it can be retried.
  */
 import { z } from "zod"
 
-import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { publicView } from "@/lib/server/contact-view"
 import {
   confirmedEmails,
@@ -23,8 +22,6 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const rejection = rejectUnlessDevice(request)
-  if (rejection) return rejection
   if (!emailAlertsConfigured())
     return Response.json(
       {

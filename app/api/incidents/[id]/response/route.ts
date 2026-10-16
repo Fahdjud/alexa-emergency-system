@@ -6,7 +6,6 @@
 import { after } from "next/server"
 import { z } from "zod"
 
-import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { escalationDeps } from "@/lib/server/escalation-deps"
 import { answerIncident } from "@/lib/server/escalation-runner"
 
@@ -18,9 +17,6 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const rejection = rejectUnlessDevice(request)
-  if (rejection) return rejection
-
   const body = BodySchema.safeParse(await request.json().catch(() => null))
   if (!body.success)
     return Response.json({ error: "Expected { answer }." }, { status: 400 })
