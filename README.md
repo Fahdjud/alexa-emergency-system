@@ -13,6 +13,7 @@ Built for households in Saudi Arabia, in **English and Saudi Arabic**.
 - [How it works](#how-it-works)
 - [Deploying online](#deploying-online)
 - [Project structure](#project-structure)
+- [With more time: an all-AWS version](#with-more-time-an-all-aws-version)
 - [Team](#team)
 - [Known limitations](#known-limitations)
 
@@ -236,6 +237,60 @@ To add a language, copy a file in `lib/safety/languages/`, translate it, and
 register it in `lib/safety/languages/index.ts`. `pnpm scorecard` then reports
 its accuracy. The UI uses [shadcn/ui](https://ui.shadcn.com) components in
 `components/ui`.
+
+## With more time: an all-AWS version
+
+The hackathon version uses whichever service was fastest to build with. With
+more time, we would run the whole app on AWS, so one account covers the
+device, AI, data and alerts, hosted in the AWS regions closest to Saudi
+Arabia wherever each service is available.
+
+```mermaid
+flowchart TB
+  Hub["🏠 <b>Home hub or Amazon Echo</b><br/>AWS IoT Greengrass runs the sound model on the device<br/>Alexa Skills Kit for Echo speakers"]
+  Gateway["🔐 <b>AWS IoT Core</b> + <b>Amazon API Gateway</b><br/>household sign-in with Amazon Cognito"]
+  Lambda["⚙️ <b>AWS Lambda</b><br/>incident API"]
+  AI["🧠 <b>Amazon Transcribe</b> + <b>Amazon Bedrock</b><br/>Gulf Arabic and English speech, Claude Haiku check"]
+  Data["🗄️ <b>Amazon DynamoDB</b> + <b>Amazon S3</b><br/>incidents and contacts; audio clips auto-deleted"]
+  SFN["⏱️ <b>AWS Step Functions</b><br/>one workflow per incident: alert, wait, alert the next person"]
+
+  subgraph Reach["Reach the family"]
+    direction LR
+    SMS["<b>AWS End User Messaging</b><br/>two-way SMS"]
+    Call["<b>Amazon Connect</b><br/>automated phone call"]
+    SNS["<b>Amazon SNS</b><br/>email and app push"]
+  end
+
+  Family(["👨‍👩‍👧 Family taps or says: on my way"])
+  Polly["🔊 <b>Amazon Polly</b><br/>tells the person at home who is coming"]
+
+  Hub --> Gateway --> Lambda
+  Lambda <--> AI
+  Lambda <--> Data
+  Lambda --> SFN
+  SFN --> SMS & Call & SNS
+  SMS & Call & SNS --> Family
+  Family --> Polly
+```
+
+If the diagram doesn't display, see
+[`docs/images/aws-architecture.png`](docs/images/aws-architecture.png).
+
+| Part             | Today                          | On AWS                                             | What it adds                                                                      |
+| ---------------- | ------------------------------ | -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Listening device | A Chrome tab                   | AWS IoT Greengrass on a small home hub             | Runs all day without a browser; keeps listening if the internet drops             |
+| Amazon Echo      | Alexa-style web demo           | Alexa Skills Kit                                   | Works on real Echo speakers people already own                                    |
+| Sign-in          | None                           | Amazon Cognito                                     | Only the family can open the monitor and manage contacts                          |
+| Speech to text   | Chrome (Google) + Groq Whisper | Amazon Transcribe                                  | Supports Gulf Arabic, and audio never leaves AWS                                  |
+| AI check         | Anthropic API                  | Amazon Bedrock (Claude Haiku)                      | Same model, billed and secured with the rest of the account                       |
+| Spoken voice     | The browser's voice            | Amazon Polly neural voices                         | Natural Arabic and English voices on every device                                 |
+| API              | Next.js routes on Vercel       | Amazon API Gateway + AWS Lambda                    | Scales on demand, with no servers to manage                                       |
+| Escalation       | pg_cron every 30 s             | AWS Step Functions                                 | One visible workflow per incident; a reply stops it immediately                   |
+| Offline warning  | pg_cron heartbeat check        | Amazon EventBridge Scheduler                       | Checks each home on a schedule, without polling                                   |
+| Data             | Supabase Postgres and Storage  | Amazon DynamoDB + Amazon S3                        | Automatic deletion (DynamoDB TTL, S3 lifecycle rules) and encryption with AWS KMS |
+| Alerts           | Telegram + Amazon SNS email    | AWS End User Messaging, Amazon Connect, Amazon SNS | Two-way SMS and automated phone calls, so family don't need any app               |
+| Secrets          | Vercel environment variables   | AWS Secrets Manager                                | Keys rotated and audited in one place                                             |
+| Monitoring       | Vercel and Supabase logs       | Amazon CloudWatch                                  | An alarm if alerts fail to send                                                   |
 
 ## Team
 
