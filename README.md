@@ -251,13 +251,14 @@ it runs on AWS, in the regions closest to Saudi Arabia wherever each service
 is available.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, Liberation Sans, sans-serif", "fontSize": "15px", "background": "#0b1421", "primaryColor": "#101e2d", "primaryTextColor": "#f3f6fa", "primaryBorderColor": "#263d54", "lineColor": "#48d4f2", "clusterBkg": "#0e1b2a", "clusterBorder": "#23354a", "titleColor": "#b3c0ce", "edgeLabelBackground": "#0b1421"}}}%%
 flowchart TB
-  Echo["🔵 <b>Amazon Echo with Alexa+</b><br/>hears alarms, falls and calls for help<br/>asks “Are you okay?” in Arabic or English"]
-  Skill["🧩 <b>Alexa+ skill</b> (Alexa Skills Kit)<br/>household linked with Amazon Cognito"]
-  Lambda["⚙️ <b>AWS Lambda</b><br/>incident backend"]
-  AI["🧠 <b>Amazon Bedrock</b><br/>decides: false alarm or real emergency"]
-  Data["🗄️ <b>Amazon DynamoDB</b> + <b>Amazon S3</b><br/>incidents and contacts; audio clips auto-deleted"]
-  SFN["⏱️ <b>AWS Step Functions</b><br/>one workflow per incident: alert, wait, alert the next person"]
+  Echo["<b>Amazon Echo with Alexa+</b><br/>hears alarms, falls and calls for help<br/>asks “Are you okay?” in Arabic or English"]
+  Skill["<b>Alexa+ skill</b> (Alexa Skills Kit)<br/>household linked with Amazon Cognito"]
+  Lambda["<b>AWS Lambda</b><br/>incident backend"]
+  AI["<b>Amazon Bedrock</b><br/>decides: false alarm or real emergency"]
+  Data["<b>Amazon DynamoDB</b> + <b>Amazon S3</b><br/>incidents and contacts; audio clips auto-deleted"]
+  SFN["<b>AWS Step Functions</b><br/>one workflow per incident: alert, wait, alert the next person"]
 
   subgraph Reach["Reach the family"]
     direction LR
@@ -267,8 +268,8 @@ flowchart TB
     SNS["<b>Amazon SNS</b><br/>email"]
   end
 
-  Family(["👨‍👩‍👧 Family answers: on my way"])
-  Announce["🔊 <b>Alexa+ announces on the Echo</b><br/>“Sara is on the way to you”"]
+  Family(["Family answers: on my way"])
+  Announce["<b>Alexa+ announces on the Echo</b><br/>“Sara is on the way to you”"]
 
   Echo --> Skill --> Lambda
   Lambda <--> AI
@@ -277,6 +278,15 @@ flowchart TB
   SFN --> Drop & SMS & Call & SNS
   Drop & SMS & Call & SNS --> Family
   Family --> Announce
+
+  classDef card fill:#101e2d,stroke:#263d54,stroke-width:1px,color:#f3f6fa
+  classDef alexa fill:#0f2a3a,stroke:#00c8f4,stroke-width:2px,color:#f3f6fa
+  classDef family fill:#00c8f4,stroke:#59ddf5,stroke-width:1px,color:#06131c
+  class Skill,Lambda,AI,Data,SFN,Drop,SMS,Call,SNS card
+  class Echo,Announce alexa
+  class Family family
+  style Reach fill:#0e1b2a,stroke:#23354a,color:#b3c0ce
+  linkStyle default stroke:#48d4f2,stroke-width:1.5px
 ```
 
 If the diagram doesn't display, see
