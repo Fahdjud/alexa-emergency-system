@@ -50,7 +50,12 @@ export function createMemoryStore(): IncidentStore {
       const contact = [...contacts.values()].find(
         (entry) => entry.inviteCode === inviteCode
       )
-      if (!contact) return null
+      // An invite works once: a contact already linked to another chat is kept.
+      if (
+        !contact ||
+        (contact.telegramChatId && contact.telegramChatId !== chatId)
+      )
+        return null
       const linked = { ...contact, telegramChatId: chatId }
       contacts.set(contact.id, linked)
       return linked

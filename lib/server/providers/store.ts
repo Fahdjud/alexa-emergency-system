@@ -88,7 +88,7 @@ export interface IncidentStore {
     email: string | null,
     status: EmailStatus | null
   ): Promise<ContactRecord | null>
-  /** Links a Telegram chat to the contact with this invite code. Returns the contact, or null for an unknown code. */
+  /** Links a Telegram chat to the contact with this invite code. Returns null for an unknown code, or one already used by another chat. */
   linkTelegramChat(
     inviteCode: string,
     chatId: string

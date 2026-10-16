@@ -19,10 +19,8 @@ import {
 const REFRESH_WHILE_WAITING_MS = 4000
 
 export function ContactsPanel({
-  deviceToken,
   onChange,
 }: {
-  deviceToken: string
   /** Called with the latest list, e.g. so the setup screen knows if anyone is connected. */
   onChange?: (contacts: ContactView[]) => void
 }) {
@@ -35,13 +33,13 @@ export function ContactsPanel({
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
-    const list = await loadContacts(deviceToken)
+    const list = await loadContacts()
     setLoadFailed(!list)
     if (!list) return
     setContacts(list.contacts)
     setEmailAlerts(list.emailAlerts)
     onChange?.(list.contacts)
-  }, [deviceToken, onChange])
+  }, [onChange])
 
   const waiting =
     contacts?.some(
@@ -59,17 +57,13 @@ export function ContactsPanel({
 
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const added = await addContact(
-      name.trim(),
-      (contacts?.length ?? 0) + 1,
-      deviceToken
-    )
+    const added = await addContact(name.trim(), (contacts?.length ?? 0) + 1)
     if (!added) return setError("Could not add the contact.")
     setName("")
     setEmail("")
     setError("")
     if (email.trim()) {
-      const saved = await saveContactEmail(added.id, email.trim(), deviceToken)
+      const saved = await saveContactEmail(added.id, email.trim())
       if (saved.error)
         setError(`${added.name} was added. Email: ${saved.error}`)
     }
@@ -77,7 +71,7 @@ export function ContactsPanel({
   }
 
   async function saveEmail(contact: ContactView, address: string) {
-    const saved = await saveContactEmail(contact.id, address, deviceToken)
+    const saved = await saveContactEmail(contact.id, address)
     setError(saved.error ? `${contact.name}: ${saved.error}` : "")
     await refresh()
     return saved.error === null
@@ -215,7 +209,7 @@ function EmailRow({
   onSave: (address: string) => Promise<boolean>
 }) {
   const [editing, setEditing] = useState(false)
-  const [address, setAddress] = useState(contact.email ?? "")
+  const [address, setAddress] = useState("")
   const [saving, setSaving] = useState(false)
 
   if (editing)

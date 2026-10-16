@@ -1,13 +1,10 @@
 /*
  * GET /api/health/config: whether each environment variable is set and well
- * formed on this deployment, never the values. Requires the household code.
+ * formed on this deployment, never the values.
  */
-import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { getEnvReport } from "@/lib/server/env"
 
-export async function GET(request: Request) {
-  const rejection = rejectUnlessDevice(request)
-  if (rejection) return rejection
+export async function GET() {
   return Response.json(getEnvReport(), {
     headers: { "Cache-Control": "no-store" },
   })

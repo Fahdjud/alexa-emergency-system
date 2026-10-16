@@ -20,7 +20,6 @@ type Input = {
   language: Language
   /** How sure the AI must be that nothing is wrong to skip the question. */
   dismissAt: number
-  deviceToken: string
 }
 
 export async function checkIncident({
@@ -29,7 +28,6 @@ export async function checkIncident({
   trigger,
   language,
   dismissAt,
-  deviceToken,
 }: Input): Promise<AiCheckResponse | null> {
   const form = new FormData()
   form.append(
@@ -44,7 +42,6 @@ export async function checkIncident({
   try {
     const response = await fetch("/api/incidents/check", {
       method: "POST",
-      headers: { Authorization: `Bearer ${deviceToken}` },
       body: form,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })

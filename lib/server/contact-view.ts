@@ -1,7 +1,9 @@
 /*
  * The public view of a contact returned to the monitor. Telegram chat IDs are
- * never exposed. A contact is "connected" when reachable on any channel:
- * Telegram, or an email address confirmed with AWS.
+ * never exposed and email addresses are masked ("r****@gmail.com"). The
+ * invite link is only returned until the contact has joined on Telegram. A
+ * contact is "connected" when reachable on any channel: Telegram, or an email
+ * address confirmed with AWS.
  */
 import "server-only"
 
@@ -23,8 +25,18 @@ export function publicView(
     priority: contact.priority,
     connected: telegramConnected || emailStatus === "confirmed",
     telegramConnected,
-    inviteLink: bot ? `https://t.me/${bot}?start=${contact.inviteCode}` : null,
-    email: contact.email,
+    inviteLink:
+      bot && !telegramConnected
+        ? `https://t.me/${bot}?start=${contact.inviteCode}`
+        : null,
+    email: contact.email ? maskEmail(contact.email) : null,
     emailStatus,
   }
+}
+
+/** Keeps the first character and the domain: "renad@gmail.com" → "r****@gmail.com". */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf("@")
+  if (at < 1) return "****"
+  return `${email[0]}****${email.slice(at)}`
 }

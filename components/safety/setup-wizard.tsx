@@ -1,7 +1,7 @@
 "use client"
 
 /*
- * First-run setup, also opened from Settings: household code and language,
+ * First-run setup, also opened from Settings: language,
  * sensitivity per incident, how cautious the AI check is, contacts, and a
  * summary. Answers are stored in the browser (lib/client/monitor-settings.ts)
  * and applied by lib/safety/profile.ts.
@@ -12,7 +12,7 @@ import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react"
 
 import { ContactsPanel } from "@/components/safety/contacts-panel"
 import { Button } from "@/components/ui/button"
-import { verifyDeviceToken, type ContactView } from "@/lib/client/safety-api"
+import type { ContactView } from "@/lib/client/safety-api"
 import { INCIDENTS } from "@/lib/safety/incidents"
 import type {
   Carefulness,
@@ -23,13 +23,11 @@ import { LANGUAGES, languagePack } from "@/lib/safety/languages"
 import type { Language } from "@/lib/safety/types"
 
 type Props = {
-  deviceToken: string
   language: Language
   profile: MonitorProfile
   /** Setup was opened from Settings (not the first run): it can be closed without changes. */
   canClose: boolean
   onSave: (result: {
-    deviceToken: string
     language: Language
     profile: MonitorProfile
     /** Start monitoring with "Test the system" straight away. */
@@ -38,7 +36,7 @@ type Props = {
   onClose: () => void
 }
 
-const STEPS = ["Connect", "Watch for", "Alerts", "Contacts", "Done"] as const
+const STEPS = ["Language", "Watch for", "Alerts", "Contacts", "Done"] as const
 
 const SENSITIVITY_LABELS: Record<Sensitivity, string> = {
   off: "Off",
@@ -69,7 +67,6 @@ const CAREFULNESS_OPTIONS: {
 ]
 
 export function SetupWizard({
-  deviceToken,
   language,
   profile,
   canClose,
@@ -77,21 +74,9 @@ export function SetupWizard({
   onClose,
 }: Props) {
   const [step, setStep] = useState(0)
-  const [token, setToken] = useState(deviceToken)
   const [lang, setLang] = useState<Language>(language)
   const [answers, setAnswers] = useState<MonitorProfile>(profile)
-  const [tokenState, setTokenState] = useState<
-    "idle" | "checking" | "wrong" | "unreachable"
-  >("idle")
   const [contacts, setContacts] = useState<ContactView[]>([])
-
-  async function connect() {
-    setTokenState("checking")
-    const result = await verifyDeviceToken(token.trim())
-    if (result !== "ok") return setTokenState(result)
-    setTokenState("idle")
-    setStep(1)
-  }
 
   const setSensitivity = (
     id: keyof MonitorProfile["incidents"],
@@ -104,7 +89,6 @@ export function SetupWizard({
 
   const finish = (runTest = false) =>
     onSave({
-      deviceToken: token.trim(),
       language: lang,
       profile: answers,
       runTest,
@@ -166,30 +150,9 @@ export function SetupWizard({
 
         {step === 0 && (
           <Step
-            title="Connect this device"
-            intro="This tablet or laptop becomes the home's safety monitor. Enter the household code you were given (the MONITOR_DEVICE_TOKEN)."
+            title="Set up this device"
+            intro="This tablet or laptop becomes the home's safety monitor. Choose the language people speak at home."
           >
-            <input
-              className="h-11 rounded-lg border border-[#263d54] bg-[#091523] px-3 text-sm outline-none focus:border-[#168aa4]"
-              type="password"
-              autoComplete="off"
-              aria-label="Household code"
-              placeholder="Household code"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-            />
-            {tokenState === "wrong" && (
-              <Notice>That code is not right. Check it and try again.</Notice>
-            )}
-            {tokenState === "unreachable" && (
-              <Notice>
-                Could not reach the server. Check the internet connection.
-              </Notice>
-            )}
-
-            <span className="text-sm text-[#d4e0ec]">
-              Language people speak at home
-            </span>
             <div className="grid grid-cols-2 gap-2">
               {LANGUAGES.map((value) => (
                 <Choice
@@ -201,13 +164,7 @@ export function SetupWizard({
                 </Choice>
               ))}
             </div>
-            <Nav
-              next={{
-                label: tokenState === "checking" ? "Checking..." : "Connect",
-                disabled: !token.trim() || tokenState === "checking",
-                onClick: connect,
-              }}
-            />
+            <Nav next={{ label: "Next", onClick: () => setStep(1) }} />
           </Step>
         )}
 
@@ -311,7 +268,7 @@ export function SetupWizard({
             title="Who should we alert?"
             intro="If nobody answers, or someone asks for help, these people get a Telegram message one after another until one of them responds. Each person opens their invite once and taps Start."
           >
-            <ContactsPanel deviceToken={token.trim()} onChange={setContacts} />
+            <ContactsPanel onChange={setContacts} />
             <Nav
               back={() => setStep(2)}
               next={{ label: "Next", onClick: () => setStep(4) }}

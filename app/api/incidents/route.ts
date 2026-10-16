@@ -3,7 +3,7 @@
  * monitor asks "Are you okay?". If the tab then closes or the device loses
  * power, the server's own deadline still escalates.
  *
- * Request (multipart, household code): trigger (JSON), language, secondsLeft,
+ * Request (multipart): trigger (JSON), language, secondsLeft,
  * optional audio (WAV), transcript and classification (JSON).
  * Response: { id }
  */
@@ -16,7 +16,6 @@ import {
   TriggerMatchSchema,
 } from "@/lib/safety/schemas"
 import type { TriggerMatch } from "@/lib/safety/types"
-import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { getStore } from "@/lib/server/providers/store"
 
 /** Extra time on top of the person's 30 s before the server escalates by itself, so it never races the monitor. */
@@ -32,9 +31,6 @@ const FieldsSchema = z.object({
 })
 
 export async function POST(request: Request) {
-  const rejection = rejectUnlessDevice(request)
-  if (rejection) return rejection
-
   const form = await request.formData().catch(() => null)
   const fields = FieldsSchema.safeParse({
     trigger: parseJson(form?.get("trigger")),

@@ -53,8 +53,7 @@ export type ContactList = {
 
 /** Records the incident on the server. Returns its id. */
 export async function reportIncident(
-  report: IncidentReport,
-  deviceToken: string
+  report: IncidentReport
 ): Promise<string | null> {
   const form = new FormData()
   form.append("trigger", JSON.stringify(report.trigger))
@@ -75,7 +74,7 @@ export async function reportIncident(
       "snippet.wav"
     )
   }
-  const body = await call<{ id: string }>("/api/incidents", deviceToken, {
+  const body = await call<{ id: string }>("/api/incidents", {
     method: "POST",
     body: form,
   })
@@ -84,12 +83,10 @@ export async function reportIncident(
 
 export async function sendAnswer(
   incidentId: string,
-  answer: "fine" | "help" | "no-answer",
-  deviceToken: string
+  answer: "fine" | "help" | "no-answer"
 ): Promise<boolean> {
   const body = await call<{ accepted: boolean }>(
     `/api/incidents/${incidentId}/response`,
-    deviceToken,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -100,35 +97,28 @@ export async function sendAnswer(
 }
 
 export function getIncidentStatus(
-  incidentId: string,
-  deviceToken: string
+  incidentId: string
 ): Promise<IncidentStatusView | null> {
-  return call<IncidentStatusView>(`/api/incidents/${incidentId}`, deviceToken)
+  return call<IncidentStatusView>(`/api/incidents/${incidentId}`)
 }
 
-export function loadContacts(deviceToken: string): Promise<ContactList | null> {
-  return call<ContactList>("/api/contacts", deviceToken)
+export function loadContacts(): Promise<ContactList | null> {
+  return call<ContactList>("/api/contacts")
 }
 
-export async function listContacts(
-  deviceToken: string
-): Promise<ContactView[] | null> {
-  return (await loadContacts(deviceToken))?.contacts ?? null
+export async function listContacts(): Promise<ContactView[] | null> {
+  return (await loadContacts())?.contacts ?? null
 }
 
 /** Saves a contact's email and signs it up for email alerts. Returns the error to show, if any. */
 export async function saveContactEmail(
   contactId: string,
-  email: string,
-  deviceToken: string
+  email: string
 ): Promise<{ contact: ContactView | null; error: string | null }> {
   try {
     const response = await fetch(`/api/contacts/${contactId}/email`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${deviceToken}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
@@ -151,26 +141,18 @@ export async function saveContactEmail(
 
 export async function addContact(
   name: string,
-  priority: number,
-  deviceToken: string
+  priority: number
 ): Promise<ContactView | null> {
-  const body = await call<{ contact: ContactView }>(
-    "/api/contacts",
-    deviceToken,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, priority }),
-    }
-  )
+  const body = await call<{ contact: ContactView }>("/api/contacts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, priority }),
+  })
   return body?.contact ?? null
 }
 
-export async function sendHeartbeat(
-  listening: boolean,
-  deviceToken: string
-): Promise<boolean> {
-  const body = await call<{ ok: boolean }>("/api/heartbeat", deviceToken, {
+export async function sendHeartbeat(listening: boolean): Promise<boolean> {
+  const body = await call<{ ok: boolean }>("/api/heartbeat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ listening }),
@@ -182,16 +164,12 @@ export type TestAlertSent = { id: string; sentTo: string[]; emailed: boolean }
 
 /** Sends the practice alert (marked TEST) to every contact. */
 export async function sendTestAlert(
-  language: Language,
-  deviceToken: string
+  language: Language
 ): Promise<TestAlertSent | { error: string }> {
   try {
     const response = await fetch("/api/test-alert", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${deviceToken}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ language }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
@@ -207,31 +185,10 @@ export async function sendTestAlert(
   }
 }
 
-/** Checks a device token against the server before it is saved. */
-export async function verifyDeviceToken(
-  deviceToken: string
-): Promise<"ok" | "wrong" | "unreachable"> {
-  try {
-    const response = await fetch("/api/health/config", {
-      headers: { Authorization: `Bearer ${deviceToken}` },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    })
-    if (response.ok) return "ok"
-    return response.status === 401 ? "wrong" : "unreachable"
-  } catch {
-    return "unreachable"
-  }
-}
-
-async function call<T>(
-  url: string,
-  deviceToken: string,
-  init: RequestInit = {}
-): Promise<T | null> {
+async function call<T>(url: string, init: RequestInit = {}): Promise<T | null> {
   try {
     const response = await fetch(url, {
       ...init,
-      headers: { ...init.headers, Authorization: `Bearer ${deviceToken}` },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
     return response.ok ? ((await response.json()) as T) : null

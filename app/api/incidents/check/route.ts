@@ -2,7 +2,7 @@
  * POST /api/incidents/check: transcribes a trigger's snippet and classifies
  * it. Nothing is stored; the snippet is used for this request only.
  *
- * Request (multipart, household code): audio (WAV), trigger (TriggerMatch
+ * Request (multipart): audio (WAV), trigger (TriggerMatch
  * JSON), language, optional dismissAt (how confident the model must be to skip
  * the question; clamped server-side).
  * Response: { transcript, classification, isIncident }
@@ -13,7 +13,6 @@ import {
   TriggerMatchSchema,
   type AiCheckResponse,
 } from "@/lib/safety/schemas"
-import { rejectUnlessDevice } from "@/lib/server/device-token"
 import { getIncidentClassifier } from "@/lib/server/providers/incident-classifier"
 import { getSpeechToText } from "@/lib/server/providers/speech-to-text"
 
@@ -23,9 +22,6 @@ export const maxDuration = 30
 const MAX_AUDIO_BYTES = 3_000_000
 
 export async function POST(request: Request) {
-  const rejection = rejectUnlessDevice(request)
-  if (rejection) return rejection
-
   const form = await request.formData().catch(() => null)
   const audio = form?.get("audio")
   const trigger = TriggerMatchSchema.safeParse(parseJson(form?.get("trigger")))

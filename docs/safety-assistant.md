@@ -38,9 +38,6 @@ to deploy it. See the [README](../README.md) for an overview.
 
 The first time `/monitor` opens, a short setup asks:
 
-- **Household code.** The `MONITOR_DEVICE_TOKEN`, verified with the server.
-  A passphrase of several words joined by `-` (at least 32 characters) is
-  easy to type and still hard to guess.
 - **Language** spoken at home.
 - **What to watch for.** Each incident can be set to Off, Normal or High.
   High lowers that incident's sound thresholds, always asks without an AI
@@ -145,7 +142,7 @@ Incident records are kept for 90 days.
      topic. It links to a page where the reader picks their name and answers
      On my way, Calling now or I'm handling it, just like the Telegram
      buttons.
-5. **Check:** open `/health`, enter the household code, and confirm everything shows ✅.
+5. **Check:** open `/health`, tap **Check configuration**, and confirm everything shows ✅.
 6. **Monitor:** open `/monitor` in Chrome and follow the setup screen.
    Add contacts and send each one their invite link; they tap **Start** in
    Telegram. Then click **Start monitoring**.
@@ -154,14 +151,16 @@ Incident records are kept for 90 days.
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:3000/monitor
-pnpm test       # unit tests
+pnpm setup-local  # creates .env.local with ACK_TOKEN_SECRET and CRON_SECRET
+pnpm dev          # http://localhost:3000/monitor
+pnpm test         # unit tests
 ```
 
 With `STORE_PROVIDER` and `NOTIFIER_PROVIDER` left empty, the app uses an
 in-memory store and prints alerts to the terminal, so no database or bot is
 needed. `instrumentation.ts` runs the escalation tick every 15 s when
-`CRON_SECRET` is set.
+`CRON_SECRET` is set. The README's "How to deploy locally" section has the
+full walkthrough.
 
 ## Where things live
 
@@ -171,7 +170,7 @@ needed. `instrumentation.ts` runs the escalation tick every 15 s when
 | `lib/audio/`                 | Browser audio: microphone, ring buffer, WAV, YAMNet, speech recognition and speech output.                   |
 | `hooks/`                     | React glue. `use-safety-monitor.ts` wires everything together.                                               |
 | `lib/server/`                | Server only: providers (speech-to-text, classifier, notifier, store), escalation runner, tokens.             |
-| `app/api/`                   | API routes. Every route checks the household code, `CRON_SECRET` or the Telegram secret.                     |
+| `app/api/`                   | API routes. The scheduler and Telegram routes check `CRON_SECRET` and the Telegram secret.                   |
 | `db/`                        | Supabase schema and scheduler.                                                                               |
 | `lib/aws/`, `lib/emergency/` | Email alerts through AWS SNS (sending and topic sign-up).                                                    |
 
@@ -188,3 +187,7 @@ so swapping a provider means adding one file.
 - Keep the monitor tab in the foreground on a device that stays plugged in.
 - There is no automatic call to emergency services. Messages and the device
   tell people to call 911.
+- The monitor has no sign-in, so anyone with the app's link can open it. The
+  contact list shows email addresses masked (`r****@gmail.com`) and never
+  shows Telegram chat IDs. A contact's invite link is hidden once they join,
+  and an invite can only be used by one Telegram chat.
