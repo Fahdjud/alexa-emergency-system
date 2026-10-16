@@ -7,6 +7,7 @@
  * hooks/use-safety-monitor.ts.
  */
 import { useEffect, useState, type ReactNode } from "react"
+import Link from "next/link"
 import {
   AudioLines,
   Mic,
@@ -101,6 +102,12 @@ function MainScreen({
             <span className="text-lg font-semibold">Home Safety Monitor</span>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              className="rounded-md px-2 py-1.5 text-sm text-[#a8bacb] no-underline hover:bg-[#14283b] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00c8f4]"
+              href="/"
+            >
+              Return to home
+            </Link>
             <LanguageSwitch
               value={monitor.language}
               onChange={monitor.setLanguage}

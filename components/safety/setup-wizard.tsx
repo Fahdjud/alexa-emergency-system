@@ -7,6 +7,7 @@
  * and applied by lib/safety/profile.ts.
  */
 import { useState, type ReactNode } from "react"
+import Link from "next/link"
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react"
 
 import { ContactsPanel } from "@/components/safety/contacts-panel"
@@ -105,16 +106,24 @@ export function SetupWizard({
             <ShieldCheck className="text-[#48d4f2]" size={24} />
             <span className="text-lg font-semibold">Home Safety Monitor</span>
           </div>
-          {canClose && (
-            <Button
-              className="text-[#a8bacb] hover:bg-[#14283b] hover:text-white"
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
+          <div className="flex items-center gap-2">
+            <Link
+              className="rounded-md px-2 py-1.5 text-sm text-[#a8bacb] no-underline hover:bg-[#14283b] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00c8f4]"
+              href="/"
             >
-              Close
-            </Button>
-          )}
+              Return to home
+            </Link>
+            {canClose && (
+              <Button
+                className="text-[#a8bacb] hover:bg-[#14283b] hover:text-white"
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+              >
+                Close
+              </Button>
+            )}
+          </div>
         </header>
 
         <ol
