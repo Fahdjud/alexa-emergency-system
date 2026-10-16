@@ -1,19 +1,23 @@
 # Home Safety Assistant
 
-An Alexa-style assistant that keeps an ear on the home. When it hears a fall,
-a call for help, a smoke alarm or breaking glass, it asks out loud
+A safety assistant for **Alexa+** that keeps an ear on the home. When it hears
+a fall, a call for help, a smoke alarm or breaking glass, it asks out loud
 **"Are you okay?"**. If the person asks for help, or doesn't answer, it alerts
 their family until someone responds, and tells the person at home who is on
 the way.
 
 Built for households in Saudi Arabia, in **English and Saudi Arabic**.
 
+This prototype runs in the browser as an Alexa+-style assistant, so it can be
+tried without an Echo. [With more time](#with-more-time-on-alexa-and-aws)
+shows how it runs on Echo devices with Alexa+ and AWS.
+
 - [What it does](#what-it-does)
 - [How to deploy locally](#how-to-deploy-locally) (start here)
 - [How it works](#how-it-works)
 - [Deploying online](#deploying-online)
 - [Project structure](#project-structure)
-- [With more time: an all-AWS version](#with-more-time-an-all-aws-version)
+- [With more time: on Alexa+ and AWS](#with-more-time-on-alexa-and-aws)
 - [Team](#team)
 - [Known limitations](#known-limitations)
 
@@ -31,7 +35,7 @@ Built for households in Saudi Arabia, in **English and Saudi Arabic**.
 
 The app has two pages:
 
-- **`/`**: the Alexa-style assistant, with a simulated fall alert.
+- **`/`**: the Alexa+-style assistant, with a simulated fall alert.
 - **`/monitor`**: the home safety monitor.
 
 ## How to deploy locally
@@ -119,7 +123,7 @@ pnpm dev
 2. When the monitor asks "Are you okay?", answer **"I'm fine"**. Nothing is
    sent.
 
-**The Alexa-style assistant**
+**The Alexa+-style assistant**
 
 Go to **http://localhost:3000** to chat with the assistant. Its
 **Simulate Fall** button needs the email settings below; without them it
@@ -231,70 +235,70 @@ Step-by-step instructions are in
 | `lib/server/`                       | Escalation runner, alert texts, signed links, configuration checks, providers |
 | `app/api/`                          | API routes                                                                    |
 | `db/`                               | Supabase schema and scheduler                                                 |
-| `components/alexa/`, `lib/aws/`     | The Alexa-style assistant and the email layer                                 |
+| `components/alexa/`, `lib/aws/`     | The Alexa+-style assistant and the email layer                                |
 
 To add a language, copy a file in `lib/safety/languages/`, translate it, and
 register it in `lib/safety/languages/index.ts`. `pnpm scorecard` then reports
 its accuracy. The UI uses [shadcn/ui](https://ui.shadcn.com) components in
 `components/ui`.
 
-## With more time: an all-AWS version
+## With more time: on Alexa+ and AWS
 
-The hackathon version uses whichever service was fastest to build with. With
-more time, we would run the whole app on AWS, so one account covers the
-device, AI, data and alerts, hosted in the AWS regions closest to Saudi
-Arabia wherever each service is available.
+Alexa+ is the heart of the idea: the Echo already in the living room becomes
+the safety assistant. It listens, asks "Are you okay?" in a natural
+conversation, and tells the person at home who is coming. Everything behind
+it runs on AWS, in the regions closest to Saudi Arabia wherever each service
+is available.
 
 ```mermaid
 flowchart TB
-  Hub["🏠 <b>Home hub or Amazon Echo</b><br/>AWS IoT Greengrass runs the sound model on the device<br/>Alexa Skills Kit for Echo speakers"]
-  Gateway["🔐 <b>AWS IoT Core</b> + <b>Amazon API Gateway</b><br/>household sign-in with Amazon Cognito"]
-  Lambda["⚙️ <b>AWS Lambda</b><br/>incident API"]
-  AI["🧠 <b>Amazon Transcribe</b> + <b>Amazon Bedrock</b><br/>Gulf Arabic and English speech, Claude Haiku check"]
+  Echo["🔵 <b>Amazon Echo with Alexa+</b><br/>hears alarms, falls and calls for help<br/>asks “Are you okay?” in Arabic or English"]
+  Skill["🧩 <b>Alexa+ skill</b> (Alexa Skills Kit)<br/>household linked with Amazon Cognito"]
+  Lambda["⚙️ <b>AWS Lambda</b><br/>incident backend"]
+  AI["🧠 <b>Amazon Bedrock</b><br/>decides: false alarm or real emergency"]
   Data["🗄️ <b>Amazon DynamoDB</b> + <b>Amazon S3</b><br/>incidents and contacts; audio clips auto-deleted"]
   SFN["⏱️ <b>AWS Step Functions</b><br/>one workflow per incident: alert, wait, alert the next person"]
 
   subgraph Reach["Reach the family"]
     direction LR
+    Drop["<b>Alexa app</b><br/>alert + Drop In on the Echo"]
     SMS["<b>AWS End User Messaging</b><br/>two-way SMS"]
     Call["<b>Amazon Connect</b><br/>automated phone call"]
-    SNS["<b>Amazon SNS</b><br/>email and app push"]
+    SNS["<b>Amazon SNS</b><br/>email"]
   end
 
-  Family(["👨‍👩‍👧 Family taps or says: on my way"])
-  Polly["🔊 <b>Amazon Polly</b><br/>tells the person at home who is coming"]
+  Family(["👨‍👩‍👧 Family answers: on my way"])
+  Announce["🔊 <b>Alexa+ announces on the Echo</b><br/>“Sara is on the way to you”"]
 
-  Hub --> Gateway --> Lambda
+  Echo --> Skill --> Lambda
   Lambda <--> AI
   Lambda <--> Data
   Lambda --> SFN
-  SFN --> SMS & Call & SNS
-  SMS & Call & SNS --> Family
-  Family --> Polly
+  SFN --> Drop & SMS & Call & SNS
+  Drop & SMS & Call & SNS --> Family
+  Family --> Announce
 ```
 
 If the diagram doesn't display, see
 [`docs/images/aws-architecture.png`](docs/images/aws-architecture.png).
 
-| Part             | Today                          | On AWS                                             | What it adds                                                                      |
-| ---------------- | ------------------------------ | -------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Listening device | A Chrome tab                   | AWS IoT Greengrass on a small home hub             | Runs all day without a browser; keeps listening if the internet drops             |
-| Amazon Echo      | Alexa-style web demo           | Alexa Skills Kit                                   | Works on real Echo speakers people already own                                    |
-| Sign-in          | None                           | Amazon Cognito                                     | Only the family can open the monitor and manage contacts                          |
-| Speech to text   | Chrome (Google) + Groq Whisper | Amazon Transcribe                                  | Supports Gulf Arabic, and audio never leaves AWS                                  |
-| AI check         | Anthropic API                  | Amazon Bedrock (Claude Haiku)                      | Same model, billed and secured with the rest of the account                       |
-| Spoken voice     | The browser's voice            | Amazon Polly neural voices                         | Natural Arabic and English voices on every device                                 |
-| API              | Next.js routes on Vercel       | Amazon API Gateway + AWS Lambda                    | Scales on demand, with no servers to manage                                       |
-| Escalation       | pg_cron every 30 s             | AWS Step Functions                                 | One visible workflow per incident; a reply stops it immediately                   |
-| Offline warning  | pg_cron heartbeat check        | Amazon EventBridge Scheduler                       | Checks each home on a schedule, without polling                                   |
-| Data             | Supabase Postgres and Storage  | Amazon DynamoDB + Amazon S3                        | Automatic deletion (DynamoDB TTL, S3 lifecycle rules) and encryption with AWS KMS |
-| Alerts           | Telegram + Amazon SNS email    | AWS End User Messaging, Amazon Connect, Amazon SNS | Two-way SMS and automated phone calls, so family don't need any app               |
-| Secrets          | Vercel environment variables   | AWS Secrets Manager                                | Keys rotated and audited in one place                                             |
-| Monitoring       | Vercel and Supabase logs       | Amazon CloudWatch                                  | An alarm if alerts fail to send                                                   |
+| Part                   | This prototype                       | On Alexa+ and AWS                                                   | What it adds                                                            |
+| ---------------------- | ------------------------------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Listening device       | A Chrome tab                         | Amazon Echo with Alexa+                                             | Runs all day on a device families already own, with no tab to keep open |
+| Conversation           | Browser speech recognition and voice | Alexa+                                                              | Natural conversation and Alexa's own voice, in Arabic and English       |
+| Sign-in                | None                                 | Alexa+ skill with account linking (Amazon Cognito)                  | Only the household's own Echo devices and family can use it             |
+| Backend                | Next.js routes on Vercel             | AWS Lambda                                                          | Scales on demand, with no servers to manage                             |
+| AI check               | Groq Whisper + Anthropic API         | Amazon Bedrock (Claude Haiku)                                       | Same model, billed and secured with the rest of the account             |
+| Escalation             | pg_cron every 30 s                   | AWS Step Functions                                                  | One visible workflow per incident; a reply stops it immediately         |
+| Offline warning        | pg_cron heartbeat check              | Amazon EventBridge Scheduler                                        | Warns the family if the Echo goes offline                               |
+| Data                   | Supabase Postgres and Storage        | Amazon DynamoDB + Amazon S3                                         | Automatic deletion (DynamoDB TTL, S3 lifecycle) and AWS KMS encryption  |
+| Alerts                 | Telegram + Amazon SNS email          | Alexa app, AWS End User Messaging (SMS), Amazon Connect, Amazon SNS | Family can Drop In on the Echo to talk, or answer by SMS or phone call  |
+| Answer heard at home   | The browser's voice                  | Alexa+ announcement on the Echo                                     | "Sara is on the way to you" in Alexa's voice                            |
+| Secrets and monitoring | Vercel variables and logs            | AWS Secrets Manager + Amazon CloudWatch                             | Keys rotated in one place, and an alarm if an alert fails to send       |
 
 ## Team
 
-- **Fahad Aljudaibi**: Alexa-style assistant app
+- **Fahad Aljudaibi**: Alexa+-style assistant app
 - **Faris Abushanab**: email alerts with AWS SNS
 - **Rinad Almjishai**: home safety monitor and AI layer
 
