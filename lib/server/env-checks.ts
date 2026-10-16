@@ -265,12 +265,6 @@ const ENV_VARS: EnvVarSpec[] = [
     check: checkSupabaseSecretKey,
   },
   {
-    name: "MONITOR_DEVICE_TOKEN",
-    group: "Generated secrets",
-    neededFor: "AI check",
-    check: checkGeneratedSecret,
-  },
-  {
     name: "ACK_TOKEN_SECRET",
     group: "Generated secrets",
     neededFor: "Alerts",

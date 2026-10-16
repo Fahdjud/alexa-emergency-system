@@ -19,7 +19,6 @@ const valid = {
     role: "service_role",
     ref: "abcdefghijklmnopqrst",
   }),
-  MONITOR_DEVICE_TOKEN: fakeSecret("a"),
   ACK_TOKEN_SECRET: fakeSecret("b"),
   CRON_SECRET: fakeSecret("c"),
   TELEGRAM_WEBHOOK_SECRET: fakeSecret("d"),
@@ -161,8 +160,8 @@ describe("checkEnvironment", () => {
       resultFor({ ...valid, ACK_TOKEN_SECRET: "short" }, "ACK_TOKEN_SECRET")
         ?.status
     ).toBe("invalid")
-    const reused = checkEnvironment({ ...valid, CRON_SECRET: fakeSecret("a") })
-    expect(reused.problems[0]).toMatch(/same value as MONITOR_DEVICE_TOKEN/)
+    const reused = checkEnvironment({ ...valid, CRON_SECRET: fakeSecret("b") })
+    expect(reused.problems[0]).toMatch(/same value as ACK_TOKEN_SECRET/)
     expect(reused.readyFor["AI check"]).toBe(false)
     expect(
       checkEnvironment({ ...valid, NEXT_PUBLIC_GROQ_API_KEY: "x" }).problems[0]

@@ -11,7 +11,7 @@ import {
   responseReceivedText,
   welcomeText,
 } from "@/lib/server/alert-message"
-import { secretsMatch } from "@/lib/server/device-token"
+import { secretsMatch } from "@/lib/server/secrets"
 import { requireEnv } from "@/lib/server/env"
 import { escalationDeps } from "@/lib/server/escalation-deps"
 import {

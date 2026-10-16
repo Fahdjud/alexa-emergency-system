@@ -1,4 +1,4 @@
-// Tests for saving a contact's email: device token, validation, and that the address is signed up and stored.
+// Tests for saving a contact's email: validation, and that the address is signed up, stored and returned masked.
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const subscribe = vi.fn()
@@ -11,13 +11,10 @@ vi.mock("@/lib/aws/sns", () => ({
 const { PUT } = await import("./route")
 const { getStore } = await import("@/lib/server/providers/store")
 
-const TOKEN = "t".repeat(64)
-
-function put(id: string, body: unknown, token = TOKEN) {
+function put(id: string, body: unknown) {
   return PUT(
     new Request(`http://localhost/api/contacts/${id}/email`, {
       method: "PUT",
-      headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     }),
     { params: Promise.resolve({ id }) }
@@ -26,15 +23,8 @@ function put(id: string, body: unknown, token = TOKEN) {
 
 describe("PUT /api/contacts/[id]/email", () => {
   beforeEach(() => {
-    vi.stubEnv("MONITOR_DEVICE_TOKEN", TOKEN)
     vi.stubEnv("AWS_SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:t")
     subscribe.mockReset().mockResolvedValue({})
-  })
-
-  it("rejects requests without the household code", async () => {
-    const response = await put("any", { email: "a@b.co" }, "wrong")
-    expect(response.status).toBe(401)
-    expect(subscribe).not.toHaveBeenCalled()
   })
 
   it("says so when email alerts are not set up", async () => {
@@ -50,7 +40,7 @@ describe("PUT /api/contacts/[id]/email", () => {
     expect(subscribe).toHaveBeenCalledWith("sara@example.com")
     const { contact } = await response.json()
     expect(contact).toMatchObject({
-      email: "sara@example.com",
+      email: "s****@example.com",
       emailStatus: "pending",
     })
     expect(contact).not.toHaveProperty("telegramChatId")

@@ -6,14 +6,9 @@ import "server-only"
 
 import { checkEnvironment, type EnvReport } from "./env-checks"
 
-/** Presence and shape of every variable. Contains no values, so it is safe to return to an authorised caller. */
+/** Presence and shape of every variable. Contains no values, so it is safe to return to any caller. */
 export function getEnvReport(): EnvReport {
   return checkEnvironment(process.env)
-}
-
-/** The device token the monitor page must send, or undefined if it is not configured. */
-export function getMonitorDeviceToken(): string | undefined {
-  return process.env.MONITOR_DEVICE_TOKEN || undefined
 }
 
 export function getSttProvider(): "groq" | "none" {
