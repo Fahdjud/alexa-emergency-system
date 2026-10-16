@@ -151,14 +151,16 @@ Incident records are kept for 90 days.
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:3000/monitor
-pnpm test       # unit tests
+pnpm setup-local  # creates .env.local with ACK_TOKEN_SECRET and CRON_SECRET
+pnpm dev          # http://localhost:3000/monitor
+pnpm test         # unit tests
 ```
 
 With `STORE_PROVIDER` and `NOTIFIER_PROVIDER` left empty, the app uses an
 in-memory store and prints alerts to the terminal, so no database or bot is
 needed. `instrumentation.ts` runs the escalation tick every 15 s when
-`CRON_SECRET` is set.
+`CRON_SECRET` is set. The README's "How to deploy locally" section has the
+full walkthrough.
 
 ## Where things live
 
