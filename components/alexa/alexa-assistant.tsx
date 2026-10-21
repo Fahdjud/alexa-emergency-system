@@ -29,6 +29,14 @@ type SpeechRecognitionController = {
 }
 
 type VoiceState = "idle" | "starting" | "listening" | "processing"
+
+// Recorded Alexa voice prompts (public/audio/alexa). The browser voice reads
+// the same text if a recording cannot play.
+const PROMPT_AUDIO = {
+  first_check: "/audio/alexa/check_1.mp3",
+  second_check: "/audio/alexa/check_2.mp3",
+  reminder: "/audio/alexa/reminder.mp3",
+} as const
 type EmergencyStage =
   | "idle"
   | "first_check"
@@ -53,12 +61,34 @@ export function AlexaAssistant() {
     requestStarted: boolean
   } | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const promptAudioRef = useRef<HTMLAudioElement | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messageIdRef = useRef(0)
 
   function appendMessage(role: ChatMessage["role"], text: string) {
     const id = ++messageIdRef.current
     setMessages((current) => [...current, { id, role, text }])
+  }
+
+  function stopPromptAudio() {
+    promptAudioRef.current?.pause()
+    promptAudioRef.current = null
+  }
+
+  /** Plays a recorded prompt. Resolves false if it cannot play. */
+  function playPromptAudio(
+    key: keyof typeof PROMPT_AUDIO,
+    onEnd?: () => void
+  ): Promise<boolean> {
+    if (typeof Audio === "undefined") return Promise.resolve(false)
+    stopPromptAudio()
+    const audio = new Audio(PROMPT_AUDIO[key])
+    promptAudioRef.current = audio
+    if (onEnd) audio.onended = onEnd
+    return audio.play().then(
+      () => true,
+      () => false
+    )
   }
 
   function clearEmergencyTimers() {
@@ -73,6 +103,7 @@ export function AlexaAssistant() {
       if (timerRef.current) clearTimeout(timerRef.current)
       if (countdownRef.current) clearInterval(countdownRef.current)
       emergencyRef.current = null
+      promptAudioRef.current?.pause()
       window.speechSynthesis?.cancel()
     },
     []
@@ -89,6 +120,7 @@ export function AlexaAssistant() {
     // Update the guard before cancelling speech: speech callbacks may run immediately.
     active.stage = "cancelled"
     clearEmergencyTimers()
+    stopPromptAudio()
     window.speechSynthesis?.cancel()
     setEmergencyStage("cancelled")
     setSecondsLeft(null)
@@ -190,25 +222,39 @@ export function AlexaAssistant() {
         else void escalateEmergency(active)
       }, 5000)
     }
-    if (
-      window.speechSynthesis &&
-      typeof SpeechSynthesisUtterance !== "undefined"
-    ) {
-      try {
-        window.speechSynthesis.cancel()
-        const utterance = new SpeechSynthesisUtterance(prompt)
-        utterance.onend = beginWindow
-        utterance.onerror = beginWindow
-        // Fall back if the browser never starts or finishes speaking.
-        timerRef.current = setTimeout(() => {
-          beginWindow()
+    const speakWithBrowserVoice = () => {
+      if (
+        emergencyRef.current !== active ||
+        active.stage !== stage ||
+        windowStarted
+      )
+        return
+      if (
+        window.speechSynthesis &&
+        typeof SpeechSynthesisUtterance !== "undefined"
+      ) {
+        try {
           window.speechSynthesis.cancel()
-        }, 15000)
-        window.speechSynthesis.speak(utterance)
-      } catch {
-        beginWindow()
-      }
-    } else beginWindow()
+          const utterance = new SpeechSynthesisUtterance(prompt)
+          utterance.onend = beginWindow
+          utterance.onerror = beginWindow
+          window.speechSynthesis.speak(utterance)
+        } catch {
+          beginWindow()
+        }
+      } else beginWindow()
+    }
+    // Fall back if the prompt never starts or finishes playing.
+    timerRef.current = setTimeout(() => {
+      beginWindow()
+      stopPromptAudio()
+      window.speechSynthesis?.cancel()
+    }, 15000)
+    if (typeof Audio === "undefined") speakWithBrowserVoice()
+    else
+      void playPromptAudio(stage, beginWindow).then((playing) => {
+        if (!playing) speakWithBrowserVoice()
+      })
   }
 
   function simulateFall() {
@@ -272,11 +318,13 @@ export function AlexaAssistant() {
         )
       )
         cancelEmergency()
-      else
+      else {
         appendMessage(
           "alexa",
           "Please confirm by saying ‘I’m okay’ or pressing the I’m okay button if you are safe."
         )
+        void playPromptAudio("reminder")
+      }
     } else appendMessage("alexa", getDemoReply(prompt))
     setDraft("")
     setVoiceNotice("")

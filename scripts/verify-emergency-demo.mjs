@@ -13,7 +13,7 @@ const source = ts.transpileModule(
   }
 ).outputText
 
-function setup(speech = false) {
+function setup(speech = false, audio = null) {
   let clock = 0,
     sequence = 0
   const timers = new Map(),
@@ -21,6 +21,7 @@ function setup(speech = false) {
     messages = [],
     cleanups = []
   const elements = []
+  const played = []
   let utterance
   const jsx = (type, props) => {
     const element = { type, props }
@@ -62,6 +63,15 @@ function setup(speech = false) {
           },
         }
       : {},
+    ...(audio && {
+      Audio: function (src) {
+        this.src = src
+        this.paused = false
+        this.pause = () => (this.paused = true)
+        this.play = () => audio(this)
+        played.push(this)
+      },
+    }),
     SpeechSynthesisUtterance: function (text) {
       this.text = text
     },
@@ -96,6 +106,7 @@ function setup(speech = false) {
   const composer = elements.find(
     (item) => item.type === "MessageComposer"
   ).props
+  const welcome = elements.find((item) => item.type === "WelcomePanel").props
   const advance = (milliseconds) => {
     const target = clock + milliseconds
     for (;;) {
@@ -112,11 +123,13 @@ function setup(speech = false) {
   return {
     header,
     composer,
+    welcome,
     advance,
     calls,
     messages,
     cleanups,
     spoken: () => utterance,
+    played,
   }
 }
 
@@ -172,13 +185,33 @@ async function verify() {
   fallback.header.onSimulateFall()
   fallback.advance(40000)
   assert.equal(fallback.calls.length, 1)
+  const recorded = setup(false, () => Promise.resolve())
+  recorded.header.onSimulateFall()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(recorded.played[0].src, "/audio/alexa/check_1.mp3")
+  recorded.advance(14000)
+  assert.equal(recorded.calls.length, 0)
+  recorded.played[0].onended()
+  recorded.advance(5000)
+  assert.equal(recorded.played[1].src, "/audio/alexa/check_2.mp3")
+  recorded.welcome.onSuggestion("maybe")
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(recorded.played.at(-1).src, "/audio/alexa/reminder.mp3")
+  recorded.composer.onConfirmOkay()
+  assert.equal(recorded.played[1].paused, true)
+  recorded.advance(30000)
+  assert.equal(recorded.calls.length, 0)
+  const blocked = setup(true, () => Promise.reject(new Error("blocked")))
+  blocked.header.onSimulateFall()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.match(blocked.spoken().text, /may have been a fall/)
   const unmounted = setup()
   unmounted.header.onSimulateFall()
   unmounted.cleanups.forEach((cleanup) => cleanup())
   unmounted.advance(30000)
   assert.equal(unmounted.calls.length, 0)
   console.log(
-    "Passed: both cancellation stages, 5s windows, duplicate guard, unique events, speech fallback, late callbacks, and unmount cleanup. All requests mocked."
+    "Passed: both cancellation stages, 5s windows, duplicate guard, unique events, recorded prompts, speech fallback, late callbacks, and unmount cleanup. All requests mocked."
   )
 }
 verify().catch((error) => {
