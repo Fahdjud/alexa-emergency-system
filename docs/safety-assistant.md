@@ -15,9 +15,9 @@ to deploy it. See the [README](../README.md) for an overview.
    before + 6 s after) is transcribed by Groq Whisper and classified by Claude
    Haiku 4.5. Only a confident "not an incident" (the TV, for example) skips
    the next step. Any failure goes on to the next step anyway.
-3. **"Are you okay?"** The device asks out loud, using the best voice the
-   browser offers for the language (Microsoft Edge has natural Saudi Arabic
-   voices). "I'm fine" cancels.
+3. **"Are you okay?"** The device asks out loud with recorded voice prompts
+   (`public/audio/monitor/`). A language without recordings uses the best
+   voice the browser offers. "I'm fine" cancels.
    "Help", or no answer within 30 s, escalates. The server also gets its own
    deadline, so a crashed tab still escalates.
 4. **Escalation (server, no AI).** Contacts get Telegram messages with the
@@ -78,6 +78,10 @@ To add a language (Urdu, Hindi, Tagalog, ...):
    recognition, matching, answers, spoken lines and the AI check pick it up
    with no other change. (Telegram and email texts to contacts stay in
    English and Arabic.)
+4. Optional: record the 15 spoken prompts (`lib/audio/recorded-prompts.ts`
+   lists them) as MP3s in `public/audio/monitor/<code>/` and set
+   `recordings: "<code>"` in the pack. Until then, the browser voice speaks.
+   `pnpm test` checks that every file is present.
 
 ### Accuracy scorecard
 

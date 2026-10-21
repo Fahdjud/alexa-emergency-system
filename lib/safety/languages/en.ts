@@ -10,6 +10,7 @@ export const en: LanguagePack = {
   name: "English",
   nativeName: "English",
   speechTag: "en-US",
+  recordings: "en",
   direction: "ltr",
 
   incidents: {

@@ -26,6 +26,12 @@ import {
 
 import { useAudioCapture } from "@/hooks/use-audio-capture"
 import { useSoundTriggers } from "@/hooks/use-sound-triggers"
+import {
+  playPrompts,
+  QUESTION_PROMPT,
+  stopPrompts,
+  type PromptId,
+} from "@/lib/audio/recorded-prompts"
 import { speak, stopSpeaking } from "@/lib/audio/speak"
 import {
   createWebSpeechListener,
@@ -350,11 +356,18 @@ export function useSafetyMonitor() {
   }, [listening, language, handleTranscript])
 
   // Say something with recognition paused, so the device never answers its own question.
+  // Plays the recorded prompts when the language has them, otherwise the browser voice reads the text.
   const say = useCallback(
-    async (text: string) => {
+    async (text: string, recording: PromptId[] = []) => {
       addLine("alexa", text)
       listenerRef.current?.pause()
-      await speak(text, languagePack(languageRef.current).speechTag)
+      const pack = languagePack(languageRef.current)
+      stopSpeaking()
+      const played =
+        pack.recordings !== undefined &&
+        recording.length > 0 &&
+        (await playPrompts(pack.recordings, recording))
+      if (!played) await speak(text, pack.speechTag)
       listenerRef.current?.resume()
     },
     [addLine]
@@ -369,8 +382,10 @@ export function useSafetyMonitor() {
     const current = stateRef.current
     if (current.phase !== "confirming") return
     const lang = languageRef.current
+    const { incidentId } = current.incident
     void say(
-      `${getIncident(current.incident.incidentId).confirmationQuestion[lang]} ${languagePack(lang).lines.replyHint}`
+      `${getIncident(incidentId).confirmationQuestion[lang]} ${languagePack(lang).lines.replyHint}`,
+      [QUESTION_PROMPT[incidentId], "reply_hint"]
     )
   }, [askKey, say])
 
@@ -396,7 +411,7 @@ export function useSafetyMonitor() {
         untilMs: current.atMs + SNOOZE_AFTER_CANCEL_MS,
         why: "fine",
       })
-      void say(languagePack(languageRef.current).lines.cancelled)
+      void say(languagePack(languageRef.current).lines.cancelled, ["cancelled"])
       const timer = setTimeout(
         () => dispatch({ type: "resume" }),
         RESUME_AFTER_CANCEL_MS
@@ -410,7 +425,7 @@ export function useSafetyMonitor() {
         untilMs: current.atMs + SNOOZE_AFTER_CANCEL_MS,
         why: "alerting",
       })
-      void say(languagePack(languageRef.current).lines.escalated)
+      void say(languagePack(languageRef.current).lines.escalated, ["escalated"])
       const timer = setTimeout(
         () => dispatch({ type: "resume" }),
         RESUME_AFTER_ESCALATION_MS
@@ -478,19 +493,19 @@ export function useSafetyMonitor() {
       setServerStatus(status)
       const lines = languagePack(languageRef.current).lines
       const name = status.acknowledgedBy ?? ""
-      const line =
+      const [line, recording]: [string, PromptId[]] =
         status.status === "acknowledged"
           ? status.response === "on-my-way"
-            ? lines.onTheWay(name)
+            ? [lines.onTheWay(name), ["on_my_way"]]
             : status.response === "calling"
-              ? lines.calling(name)
-              : lines.handling(name)
+              ? [lines.calling(name), ["calling"]]
+              : [lines.handling(name), ["handling"]]
           : status.status === "unacknowledged"
-            ? lines.unacknowledged
-            : ""
+            ? [lines.unacknowledged, ["unacknowledged"]]
+            : ["", []]
       if (line && line !== lastSpoken) {
         lastSpoken = line
-        void say(line)
+        void say(line, recording)
       }
     }
     void poll()
@@ -589,7 +604,8 @@ export function useSafetyMonitor() {
         update("voice", "running", "Speaking…")
         await waitFor(() => speechStatusRef.current !== "off", 5000)
         await say(
-          `${lines.test} ${getIncident("fall").confirmationQuestion[language]} ${lines.replyHint}`
+          `${lines.test} ${getIncident("fall").confirmationQuestion[language]} ${lines.replyHint}`,
+          ["test_intro", QUESTION_PROMPT.fall, "reply_hint"]
         )
         if (!alive()) return
         update(
@@ -627,7 +643,7 @@ export function useSafetyMonitor() {
               "ok",
               `Heard “${reply.text}”, understood as ${reply.intent === "fine" ? "“I'm fine”" : "“help”"}.`
             )
-            await say(lines.testHeard)
+            await say(lines.testHeard, ["test_heard"])
           } else {
             update(
               "speech",
@@ -666,7 +682,14 @@ export function useSafetyMonitor() {
               ? lines.onTheWay(name)
               : response === "calling"
                 ? lines.calling(name)
-                : lines.handling(name)
+                : lines.handling(name),
+            [
+              response === "on-my-way"
+                ? "on_my_way"
+                : response === "calling"
+                  ? "calling"
+                  : "handling",
+            ]
           )
           return update(
             "contacts",
@@ -700,6 +723,7 @@ export function useSafetyMonitor() {
   }, [])
 
   const stop = useCallback(() => {
+    stopPrompts()
     stopSpeaking()
     audio.stop()
   }, [audio])
