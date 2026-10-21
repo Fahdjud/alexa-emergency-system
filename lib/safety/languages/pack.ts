@@ -16,6 +16,12 @@ export type LanguagePack = {
   /** BCP 47 tag for Chrome speech recognition and speech output, e.g. "ar-SA". */
   speechTag: string
   direction: "ltr" | "rtl"
+  /**
+   * Folder in public/audio/monitor with this language's recorded prompts
+   * (lib/audio/recorded-prompts.ts). Without it, the browser voice speaks
+   * every line.
+   */
+  recordings?: string
 
   /** What to listen for, and the question to ask, per incident. */
   incidents: Record<IncidentTypeId, IncidentWords>
