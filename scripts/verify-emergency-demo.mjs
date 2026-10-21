@@ -167,7 +167,7 @@ async function verify() {
   assert.equal(demo.calls[0].event.type, "Possible Fall")
   assert.match(demo.calls[0].event.message, /Demo simulation/)
   await new Promise((resolve) => setImmediate(resolve))
-  assert.match(demo.messages.at(-1).text, /sent to SNS/)
+  assert.match(demo.messages.at(-1).text, /sent an alert to your trusted contact/)
   demo.header.onSimulateFall()
   demo.advance(10000)
   assert.equal(demo.calls.length, 2)

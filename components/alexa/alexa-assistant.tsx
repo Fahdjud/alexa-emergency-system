@@ -184,7 +184,7 @@ export function AlexaAssistant() {
     // The result is announced after this sentence, so it is never cut off.
     const announced = sayMessage(
       "sending",
-      "No response to either safety check. Sending a possible emergency alert to your trusted contact…"
+      "I didn’t hear an answer, so I’m alerting your trusted contact now."
     )
     try {
       const response = await fetch("/api/emergency", {
@@ -206,7 +206,7 @@ export function AlexaAssistant() {
       if (emergencyRef.current !== active) return
       void sayMessage(
         "published",
-        "The possible emergency alert was sent to SNS for delivery to your confirmed trusted contact. Inbox delivery is not verified by this demo."
+        "I’ve sent an alert to your trusted contact. If you can, call 911 for help."
       )
     } catch {
       if (emergencyRef.current !== active) return
@@ -216,7 +216,7 @@ export function AlexaAssistant() {
       if (emergencyRef.current !== active) return
       void sayMessage(
         "failed",
-        "I couldn’t confirm that the alert was published. Delivery status is unknown. This demo will not retry automatically."
+        "I couldn’t send the alert. If you can, call 911 for help."
       )
     }
   }
