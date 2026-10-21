@@ -64,12 +64,14 @@ function setup(speech = false, audio = null) {
         }
       : {},
     ...(audio && {
-      Audio: function (src) {
-        this.src = src
-        this.paused = false
+      Audio: function () {
+        this.paused = true
         this.pause = () => (this.paused = true)
-        this.play = () => audio(this)
-        played.push(this)
+        this.play = () => {
+          this.paused = false
+          played.push({ src: this.src, element: this })
+          return audio(this)
+        }
       },
     }),
     SpeechSynthesisUtterance: function (text) {
@@ -191,16 +193,33 @@ async function verify() {
   assert.equal(recorded.played[0].src, "/audio/alexa/check_1.mp3")
   recorded.advance(14000)
   assert.equal(recorded.calls.length, 0)
-  recorded.played[0].onended()
+  recorded.played[0].element.onended()
   recorded.advance(5000)
   assert.equal(recorded.played[1].src, "/audio/alexa/check_2.mp3")
+  assert.equal(recorded.played[1].element, recorded.played[0].element)
   recorded.welcome.onSuggestion("maybe")
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(recorded.played.at(-1).src, "/audio/alexa/reminder.mp3")
   recorded.composer.onConfirmOkay()
-  assert.equal(recorded.played[1].paused, true)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(recorded.played.at(-1).src, "/audio/alexa/cancelled.mp3")
   recorded.advance(30000)
   assert.equal(recorded.calls.length, 0)
+  const sent = setup(false, () => Promise.resolve())
+  sent.header.onSimulateFall()
+  await new Promise((resolve) => setImmediate(resolve))
+  sent.played[0].element.onended()
+  sent.advance(5000)
+  sent.played[1].element.onended()
+  sent.advance(5000)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(sent.played.length, 3, "the result waits for the sending line")
+  sent.played[2].element.onended()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(
+    sent.played.map((entry) => entry.src.split("/").at(-1)),
+    ["check_1.mp3", "check_2.mp3", "sending.mp3", "sent.mp3"]
+  )
   const blocked = setup(true, () => Promise.reject(new Error("blocked")))
   blocked.header.onSimulateFall()
   await new Promise((resolve) => setImmediate(resolve))
