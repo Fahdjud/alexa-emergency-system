@@ -13,7 +13,7 @@ const source = ts.transpileModule(
   }
 ).outputText
 
-function setup(speech = false) {
+function setup(speech = false, audio = null) {
   let clock = 0,
     sequence = 0
   const timers = new Map(),
@@ -21,6 +21,7 @@ function setup(speech = false) {
     messages = [],
     cleanups = []
   const elements = []
+  const played = []
   let utterance
   const jsx = (type, props) => {
     const element = { type, props }
@@ -62,6 +63,17 @@ function setup(speech = false) {
           },
         }
       : {},
+    ...(audio && {
+      Audio: function () {
+        this.paused = true
+        this.pause = () => (this.paused = true)
+        this.play = () => {
+          this.paused = false
+          played.push({ src: this.src, element: this })
+          return audio(this)
+        }
+      },
+    }),
     SpeechSynthesisUtterance: function (text) {
       this.text = text
     },
@@ -96,6 +108,7 @@ function setup(speech = false) {
   const composer = elements.find(
     (item) => item.type === "MessageComposer"
   ).props
+  const welcome = elements.find((item) => item.type === "WelcomePanel").props
   const advance = (milliseconds) => {
     const target = clock + milliseconds
     for (;;) {
@@ -112,11 +125,13 @@ function setup(speech = false) {
   return {
     header,
     composer,
+    welcome,
     advance,
     calls,
     messages,
     cleanups,
     spoken: () => utterance,
+    played,
   }
 }
 
@@ -152,7 +167,7 @@ async function verify() {
   assert.equal(demo.calls[0].event.type, "Possible Fall")
   assert.match(demo.calls[0].event.message, /Demo simulation/)
   await new Promise((resolve) => setImmediate(resolve))
-  assert.match(demo.messages.at(-1).text, /sent to SNS/)
+  assert.match(demo.messages.at(-1).text, /sent an alert to your trusted contact/)
   demo.header.onSimulateFall()
   demo.advance(10000)
   assert.equal(demo.calls.length, 2)
@@ -172,13 +187,50 @@ async function verify() {
   fallback.header.onSimulateFall()
   fallback.advance(40000)
   assert.equal(fallback.calls.length, 1)
+  const recorded = setup(false, () => Promise.resolve())
+  recorded.header.onSimulateFall()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(recorded.played[0].src, "/audio/alexa/check_1.mp3")
+  recorded.advance(14000)
+  assert.equal(recorded.calls.length, 0)
+  recorded.played[0].element.onended()
+  recorded.advance(5000)
+  assert.equal(recorded.played[1].src, "/audio/alexa/check_2.mp3")
+  assert.equal(recorded.played[1].element, recorded.played[0].element)
+  recorded.welcome.onSuggestion("maybe")
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(recorded.played.at(-1).src, "/audio/alexa/reminder.mp3")
+  recorded.composer.onConfirmOkay()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(recorded.played.at(-1).src, "/audio/alexa/cancelled.mp3")
+  recorded.advance(30000)
+  assert.equal(recorded.calls.length, 0)
+  const sent = setup(false, () => Promise.resolve())
+  sent.header.onSimulateFall()
+  await new Promise((resolve) => setImmediate(resolve))
+  sent.played[0].element.onended()
+  sent.advance(5000)
+  sent.played[1].element.onended()
+  sent.advance(5000)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(sent.played.length, 3, "the result waits for the sending line")
+  sent.played[2].element.onended()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(
+    sent.played.map((entry) => entry.src.split("/").at(-1)),
+    ["check_1.mp3", "check_2.mp3", "sending.mp3", "sent.mp3"]
+  )
+  const blocked = setup(true, () => Promise.reject(new Error("blocked")))
+  blocked.header.onSimulateFall()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.match(blocked.spoken().text, /may have been a fall/)
   const unmounted = setup()
   unmounted.header.onSimulateFall()
   unmounted.cleanups.forEach((cleanup) => cleanup())
   unmounted.advance(30000)
   assert.equal(unmounted.calls.length, 0)
   console.log(
-    "Passed: both cancellation stages, 5s windows, duplicate guard, unique events, speech fallback, late callbacks, and unmount cleanup. All requests mocked."
+    "Passed: both cancellation stages, 5s windows, duplicate guard, unique events, recorded prompts, speech fallback, late callbacks, and unmount cleanup. All requests mocked."
   )
 }
 verify().catch((error) => {

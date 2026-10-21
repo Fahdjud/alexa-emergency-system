@@ -29,6 +29,20 @@ type SpeechRecognitionController = {
 }
 
 type VoiceState = "idle" | "starting" | "listening" | "processing"
+
+// Recorded Alexa voice prompts (public/audio/alexa). The browser voice reads
+// the same text if a recording cannot play. All prompts reuse one audio
+// element: iPhones only allow audio started by a tap, but an element that
+// played after a tap may keep playing after timers and network replies.
+const PROMPT_AUDIO = {
+  first_check: "/audio/alexa/check_1.mp3",
+  second_check: "/audio/alexa/check_2.mp3",
+  reminder: "/audio/alexa/reminder.mp3",
+  cancelled: "/audio/alexa/cancelled.mp3",
+  sending: "/audio/alexa/sending.mp3",
+  published: "/audio/alexa/sent.mp3",
+  failed: "/audio/alexa/failed.mp3",
+} as const
 type EmergencyStage =
   | "idle"
   | "first_check"
@@ -53,12 +67,65 @@ export function AlexaAssistant() {
     requestStarted: boolean
   } | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const promptAudioRef = useRef<HTMLAudioElement | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messageIdRef = useRef(0)
 
   function appendMessage(role: ChatMessage["role"], text: string) {
     const id = ++messageIdRef.current
     setMessages((current) => [...current, { id, role, text }])
+  }
+
+  function stopPromptAudio() {
+    promptAudioRef.current?.pause()
+  }
+
+  /** Plays a recorded prompt. Resolves false if it cannot play. */
+  function playPromptAudio(
+    key: keyof typeof PROMPT_AUDIO,
+    onEnd?: () => void
+  ): Promise<boolean> {
+    if (typeof Audio === "undefined") return Promise.resolve(false)
+    promptAudioRef.current ??= new Audio()
+    const audio = promptAudioRef.current
+    audio.pause()
+    audio.onended = onEnd ?? null
+    audio.src = PROMPT_AUDIO[key]
+    return audio.play().then(
+      () => true,
+      () => false
+    )
+  }
+
+  /**
+   * Shows an Alexa message and says it: the recording, or the browser voice.
+   * Resolves when it has been said (at most 12 seconds).
+   */
+  function sayMessage(
+    key: keyof typeof PROMPT_AUDIO,
+    text: string
+  ): Promise<void> {
+    appendMessage("alexa", text)
+    return new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 12000)
+      const done = () => {
+        clearTimeout(timeout)
+        resolve()
+      }
+      void playPromptAudio(key, done).then((playing) => {
+        if (playing) return
+        if (
+          !window.speechSynthesis ||
+          typeof SpeechSynthesisUtterance === "undefined"
+        )
+          return done()
+        const utterance = new SpeechSynthesisUtterance(text)
+        utterance.onend = done
+        utterance.onerror = done
+        window.speechSynthesis.cancel()
+        window.speechSynthesis.speak(utterance)
+      })
+    })
   }
 
   function clearEmergencyTimers() {
@@ -73,6 +140,7 @@ export function AlexaAssistant() {
       if (timerRef.current) clearTimeout(timerRef.current)
       if (countdownRef.current) clearInterval(countdownRef.current)
       emergencyRef.current = null
+      promptAudioRef.current?.pause()
       window.speechSynthesis?.cancel()
     },
     []
@@ -89,11 +157,12 @@ export function AlexaAssistant() {
     // Update the guard before cancelling speech: speech callbacks may run immediately.
     active.stage = "cancelled"
     clearEmergencyTimers()
+    stopPromptAudio()
     window.speechSynthesis?.cancel()
     setEmergencyStage("cancelled")
     setSecondsLeft(null)
-    appendMessage(
-      "alexa",
+    void sayMessage(
+      "cancelled",
       "Thanks for letting me know. The emergency check is cancelled. No alert was sent."
     )
   }
@@ -112,9 +181,10 @@ export function AlexaAssistant() {
     clearEmergencyTimers()
     setSecondsLeft(null)
     setEmergencyStage("sending")
-    appendMessage(
-      "alexa",
-      "No response to either safety check. Sending a possible emergency alert to your trusted contact…"
+    // The result is announced after this sentence, so it is never cut off.
+    const announced = sayMessage(
+      "sending",
+      "I didn’t hear an answer, so I’m alerting your trusted contact now."
     )
     try {
       const response = await fetch("/api/emergency", {
@@ -132,17 +202,21 @@ export function AlexaAssistant() {
       if (emergencyRef.current !== active) return
       active.stage = "published"
       setEmergencyStage("published")
-      appendMessage(
-        "alexa",
-        "The possible emergency alert was sent to SNS for delivery to your confirmed trusted contact. Inbox delivery is not verified by this demo."
+      await announced
+      if (emergencyRef.current !== active) return
+      void sayMessage(
+        "published",
+        "I’ve sent an alert to your trusted contact. If you can, call 911 for help."
       )
     } catch {
       if (emergencyRef.current !== active) return
       active.stage = "failed"
       setEmergencyStage("failed")
-      appendMessage(
-        "alexa",
-        "I couldn’t confirm that the alert was published. Delivery status is unknown. This demo will not retry automatically."
+      await announced
+      if (emergencyRef.current !== active) return
+      void sayMessage(
+        "failed",
+        "I couldn’t send the alert. If you can, call 911 for help."
       )
     }
   }
@@ -190,25 +264,39 @@ export function AlexaAssistant() {
         else void escalateEmergency(active)
       }, 5000)
     }
-    if (
-      window.speechSynthesis &&
-      typeof SpeechSynthesisUtterance !== "undefined"
-    ) {
-      try {
-        window.speechSynthesis.cancel()
-        const utterance = new SpeechSynthesisUtterance(prompt)
-        utterance.onend = beginWindow
-        utterance.onerror = beginWindow
-        // Fall back if the browser never starts or finishes speaking.
-        timerRef.current = setTimeout(() => {
-          beginWindow()
+    const speakWithBrowserVoice = () => {
+      if (
+        emergencyRef.current !== active ||
+        active.stage !== stage ||
+        windowStarted
+      )
+        return
+      if (
+        window.speechSynthesis &&
+        typeof SpeechSynthesisUtterance !== "undefined"
+      ) {
+        try {
           window.speechSynthesis.cancel()
-        }, 15000)
-        window.speechSynthesis.speak(utterance)
-      } catch {
-        beginWindow()
-      }
-    } else beginWindow()
+          const utterance = new SpeechSynthesisUtterance(prompt)
+          utterance.onend = beginWindow
+          utterance.onerror = beginWindow
+          window.speechSynthesis.speak(utterance)
+        } catch {
+          beginWindow()
+        }
+      } else beginWindow()
+    }
+    // Fall back if the prompt never starts or finishes playing.
+    timerRef.current = setTimeout(() => {
+      beginWindow()
+      stopPromptAudio()
+      window.speechSynthesis?.cancel()
+    }, 15000)
+    if (typeof Audio === "undefined") speakWithBrowserVoice()
+    else
+      void playPromptAudio(stage, beginWindow).then((playing) => {
+        if (!playing) speakWithBrowserVoice()
+      })
   }
 
   function simulateFall() {
@@ -273,8 +361,8 @@ export function AlexaAssistant() {
       )
         cancelEmergency()
       else
-        appendMessage(
-          "alexa",
+        void sayMessage(
+          "reminder",
           "Please confirm by saying ‘I’m okay’ or pressing the I’m okay button if you are safe."
         )
     } else appendMessage("alexa", getDemoReply(prompt))

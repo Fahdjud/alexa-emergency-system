@@ -156,7 +156,7 @@ is described in [`.env.example`](.env.example).
 | It does not react to speech                 | Use Chrome or Edge, check the internet connection, and check the language chosen in setup                       |
 | No alert appears in the terminal            | Check the terminal running `pnpm dev`. Run `pnpm setup-local` again, then restart `pnpm dev`                    |
 | Contacts disappeared                        | Local data is kept in memory, so it resets when the app restarts. Add the contact again                         |
-| The voice sounds robotic                    | Microsoft Edge has more natural voices, especially in Arabic                                                    |
+| No voice is heard                           | Turn the volume up. If recordings can't play, the browser voice reads the same text                             |
 
 ### Checks
 
@@ -303,7 +303,7 @@ If the diagram doesn't display, see
 | Offline warning        | pg_cron heartbeat check              | Amazon EventBridge Scheduler                                        | Warns the family if the Echo goes offline                               |
 | Data                   | Supabase Postgres and Storage        | Amazon DynamoDB + Amazon S3                                         | Automatic deletion (DynamoDB TTL, S3 lifecycle) and AWS KMS encryption  |
 | Alerts                 | Telegram + Amazon SNS email          | Alexa app, AWS End User Messaging (SMS), Amazon Connect, Amazon SNS | Family can Drop In on the Echo to talk, or answer by SMS or phone call  |
-| Answer heard at home   | The browser's voice                  | Alexa+ announcement on the Echo                                     | "Sara is on the way to you" in Alexa's voice                            |
+| Answer heard at home   | Recorded voice prompts               | Alexa+ announcement on the Echo                                     | "Sara is on the way to you" in Alexa's voice                            |
 | Secrets and monitoring | Vercel variables and logs            | AWS Secrets Manager + Amazon CloudWatch                             | Keys rotated in one place, and an alarm if an alert fails to send       |
 
 ## Team

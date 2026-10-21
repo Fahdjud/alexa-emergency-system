@@ -12,6 +12,7 @@ export const ar: LanguagePack = {
   name: "Arabic",
   nativeName: "العربية",
   speechTag: "ar-SA",
+  recordings: "ar",
   direction: "rtl",
 
   incidents: {
