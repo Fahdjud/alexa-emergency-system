@@ -1,6 +1,8 @@
 packages: []
 
 allowBuilds:
+  msw: false
   sharp: true
   unrs-resolver: true
-  msw: false
+overrides:
+ 
